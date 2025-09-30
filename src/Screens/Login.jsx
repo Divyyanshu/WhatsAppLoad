@@ -24,16 +24,16 @@ import { LoginPhoto } from '../Assets/index.js';
 import { COLORS } from '../Constants/Colors.jsx';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-  const colorScheme = Appearance.getColorScheme();
-   const theme = colorScheme === 'dark' ? COLORS.dark : COLORS.light;
-  const API_URL = 'https://www.loadcrm.com/whatsappmobileapis/api'; // https://www.loadcrm.com/whatsappmobileapis/api
+const colorScheme = Appearance.getColorScheme();
+const theme = colorScheme === 'dark' ? COLORS.dark : COLORS.light;
+const API_URL = 'https://www.loadcrm.com/whatsappmobileapis/api'; // https://www.loadcrm.com/whatsappmobileapis/api
 
 const LoginScreen = () => {
   const [username, setUsername] = useState('trial');
   const [password, setPassword] = useState('trial@1234');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
- const [toast, setToast] = useState({ visible: false, message: '' });
+  const [toast, setToast] = useState({ visible: false, message: '' });
 
   const showToast = (msg) => setToast({ visible: true, message: msg });
   const hideToast = () => setToast({ visible: false, message: '' });
@@ -41,24 +41,24 @@ const LoginScreen = () => {
   const navigation = useNavigation();
 
   const checkAsyncStorage = async () => {
-  try {
-    const allKeys = await AsyncStorage.getAllKeys();
-    console.log('All AsyncStorage Keys:', allKeys);
+    try {
+      const allKeys = await AsyncStorage.getAllKeys();
+      console.log('All AsyncStorage Keys:', allKeys);
 
-    for (const key of allKeys) {
-      const value = await AsyncStorage.getItem(key);
-      console.log(`Key: ${key}, Value: ${value}`);
+      // for (const key of allKeys) {
+      //   const value = await AsyncStorage.getItem(key);
+      //   console.log(`Key: ${key}, Value: ${value}`);
+      // }
+    } catch (error) {
+      console.error('Error retrieving AsyncStorage data:', error);
     }
-  } catch (error) {
-    console.error('Error retrieving AsyncStorage data:', error);
-  }
-};
+  };
 
-// Call this function in your component's lifecycle or a button press
-// For example, in a useEffect hook:
-useEffect(() => {
-  checkAsyncStorage();
-}, []);
+  // Call this function in your component's lifecycle or a button press
+  // For example, in a useEffect hook:
+  useEffect(() => {
+    checkAsyncStorage();
+  }, []);
 
 
   useEffect(() => {
@@ -70,8 +70,8 @@ useEffect(() => {
     };
   }, []);
 
-  
-//  function to handle login
+
+  //  function to handle login
   const handleLogin = async () => {
 
     if (!username) {
@@ -144,24 +144,24 @@ useEffect(() => {
               <TouchableOpacity style={styles.button} onPress={handleLogin}>
                 <Text style={styles.buttonText}>Sign In</Text>
               </TouchableOpacity>
-                <ToastMessage
-        message={toast.message}
-        visible={toast.visible}
-        onHide={hideToast}
-        duration={1000}
-      />
+              <ToastMessage
+                message={toast.message}
+                visible={toast.visible}
+                onHide={hideToast}
+                duration={1000}
+              />
             </View>
-             {!keyboardVisible && (
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Powered by <Text style={styles.boldText}>Load Infotech</Text>
-            </Text>
+            {!keyboardVisible && (
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>
+                  Powered by <Text style={styles.boldText}>Load Infotech</Text>
+                </Text>
+              </View>
+            )}
           </View>
-        )}
-          </View>
-          
+
         </View>
-       
+
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 32, // space-y-8
     width: '100%',
-    backgroundColor: theme.primary ,
+    backgroundColor: theme.primary,
     paddingVertical: 14,
     borderRadius: 8, // rounded-lg
     alignItems: 'center',
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   footerText: {
     color: '#9ca3af', // text-gray-400
     textAlign: 'center',
-        fontSize: 16
+    fontSize: 16
 
   },
   boldText: {

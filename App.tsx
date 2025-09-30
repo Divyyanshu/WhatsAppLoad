@@ -4,52 +4,74 @@
  *
  * @format
  */
-
+import React, { useEffect, useState } from 'react';
 import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import { StatusBar, StyleSheet, useColorScheme, View, Text, ActivityIndicator } from 'react-native';
 import LoginScreen from './src/Screens/Login';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
 import OwnChat from './src/Screens/OwnChat';
 import ChatScreen from './src/Screens/ChatScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import TemplateListScreen from './src/Screens/TemplateListScreen';
+import { UserProvider } from './src/Context/UserContext';
 
  
-
-const Stack = createStackNavigator();
-function RootNavigator() {
-  //  const { isLoggedIn, loading } = useContext(AuthContext);
-
-  // if (loading) {
-  //   return <LoadingScreen />;
-  // }
-
-
-
+function LoadingScreen() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: true }} initialRouteName="OwnChat">
-        
-          <Stack.Screen name="Login" component={LoginScreen} options={{headerShown:false}} />
-          <Stack.Screen name="OwnChat" component={OwnChat} options={{headerShown:false}} />
-          <Stack.Screen name="ChatScreen" component={ChatScreen} options={{headerShown:false}}/>
-        </Stack.Navigator>
-    </NavigationContainer>
+    <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <Text style={{ fontSize: 24, marginBottom: 16 }}> WhatsApp By</Text>
+            <Text style={{ fontSize: 32, marginBottom: 16, fontWeight: 'bold' }}>Load Infotech</Text>
+
+      {/* <ActivityIndicator size="large" /> */}
+    </View>
   );
 }
 
+const Stack = createStackNavigator();
+
+function RootNavigator() {
+  const [initialRoute, setInitialRoute] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      // Simulate loading
+      await new Promise(res => setTimeout(res, 1000));
+      const user = await AsyncStorage.getItem('user');
+      setInitialRoute(user ? 'OwnChat' : 'Login');
+    };
+    checkUser();
+  }, []);
+
+  if (!initialRoute) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: true }} initialRouteName={initialRoute}>
+        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="OwnChat" component={OwnChat} options={{ headerShown: false }} />
+        <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Templates" component={TemplateListScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
 
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
   return (
+    <UserProvider>
     <View style={styles.container}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
       {/* <NewAppScreen templateFileName="App.tsx" /> */}
 
       <RootNavigator />
     </View>
+    </UserProvider>
   );
 }
 
