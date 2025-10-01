@@ -15,7 +15,7 @@ export const saveSentMessage = async (messageDetails) => {
     MessageType: 'TEXT',
     MessageText: messageDetails.templateContent,
     Mid: messageDetails.mid,
-    ServiceType: messageDetails.serviceType || 'AUTO', // Use ServiceType from template if available
+    ServiceType: messageDetails.serviceType || 'AUTO', 
     ImagePath: messageDetails.imagePath || '', // Pass the image path if it exists
     // The rest of the parameters, defaulting to empty strings
     FileData: '',
@@ -28,9 +28,10 @@ export const saveSentMessage = async (messageDetails) => {
     ButtonJsonList: '',
     ListButtonName: '',
   };
-
+ console.log('Payload for saving sent message:', JSON.stringify(payload));
   try {
-    const response = await axios.post(`${API_BASE_URL}${endpoint}`, payload);
+    const response = await axios.post(`${API_BASE_URL}/${endpoint}`, payload);
+    console.log('Response from saving sent message:',response,  response.data);
     if (response.status === 200) {
       console.log('Chat history saved successfully with all params:', response.data);
       return { success: true };

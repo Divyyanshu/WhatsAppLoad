@@ -203,6 +203,7 @@ const OwnChat = ({ navigation }) => {
             placeholder="Search"
             value={search}
             onChangeText={setSearch}
+            inputMode='numeric'
           />
         </View>
       </View>
@@ -221,17 +222,19 @@ const OwnChat = ({ navigation }) => {
         }
       />
 
-      {/* Logout Modal (unchanged) */}
+      {/* Improved Logout Modal Design */}
       <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalText}>Are you sure you want to logout?</Text>
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalButton} onPress={() => setShowModal(false)}>
-                <Text style={styles.cancelText}>Cancel</Text>
+          <View style={[styles.modalContent, { elevation: 8, shadowColor: '#b3a0e0', shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }]}>  
+            <Feather name="alert-circle" size={48} color="#d01623ff" style={{ marginBottom: 12 }} />
+            <Text style={[styles.modalText, { fontWeight: 'bold', fontSize: 20 }]}>Logout?</Text>
+            <Text style={{ color: '#666', fontSize: 15, marginBottom: 18, textAlign: 'center' }}>Are you sure you want to logout from your account?</Text>
+            <View style={[styles.modalActions, { marginTop: 8 }]}>  
+              <TouchableOpacity style={[styles.modalButton, { backgroundColor: '#f2f2f2', borderRadius: 8, marginRight: 8 }]} onPress={() => setShowModal(false)}>
+                <Text style={[styles.cancelText, { fontSize: 16 }]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalButton} onPress={handleLogout}>
-                <Text style={styles.logoutText}>Logout</Text>
+              <TouchableOpacity style={[styles.modalButton, { backgroundColor: '#d01623ff', borderRadius: 8, marginLeft: 8 }]} onPress={handleLogout}>
+                <Text style={[styles.logoutText, { color: '#fff', fontSize: 16 }]}>Logout</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -4,7 +4,7 @@ export const COLORS = {
       black: '#000',
 
   light: {
-    primary: '#60a5fa', // light blue
+    primary: '#005A9C', // light blue
     border: '#d1d5db',
     label: '#9ca3af',
     background: '#fff',

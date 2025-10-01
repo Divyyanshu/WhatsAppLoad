@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
   },
   dateSection: {
     alignSelf: 'center',
-    backgroundColor: '#eee',
+    backgroundColor: '#005A9C',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 4,
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   },
   dateSectionText: {
     fontSize: 13,
-    color: '#888',
+    color: '#fff',
     fontWeight: 'bold',
   },
   templateButton: {

@@ -72,12 +72,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   input: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 20,
     // backgroundColor: 'red',
     fontSize: 14,
     color: '#111827',
-    textAlign: 'center', // Center the input text
-    textAlignVertical: 'center', // Center the input text vertically
+    textAlign: 'start', // Center the input text
+    // textAlignVertical: 'center', // Center the input text vertically
+    zIndex: 99,
    
   },
 });

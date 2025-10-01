@@ -9,6 +9,7 @@ import {
   TextInput,
   Button,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { COLORS } from '../Constants/Colors';
 import Video from 'react-native-video';
@@ -18,7 +19,7 @@ import { saveSentMessage } from '../Utils/api';
 
 const TemplateCard = ({ template, recipientNumber }) => {
 
-  const { Template, TemplateType, ImagePath, FileName, TemplateName, ServiceType, templateId } = template;
+  const { Template, TemplateType, ImagePath, FileName, TemplateName, ServiceType, templateId ,Category} = template;
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [variableCount, setVariableCount] = useState(0);
   const [variableValues, setVariableValues] = useState([]);
@@ -26,7 +27,7 @@ const TemplateCard = ({ template, recipientNumber }) => {
   const [loading, setLoading] = useState(false);
 
   const {user} = useContext(UserContext);  
-
+  
   useEffect(() => {
     const matches = Template.match(/{Variable}/g) || [];
     const count = matches.length;
@@ -35,9 +36,12 @@ const TemplateCard = ({ template, recipientNumber }) => {
     setFinalMessage(null);
   }, [Template]);
 
-  // --- API CALL LOGIC for send message ---
-  const sendMessageApi = async ({ to, TemplateName }) => {
+  // --- API CALL LOGIC for send message ---const sendMessageApi = async ({ to, messageContent, fullTemplate })
+  const sendMessageApi = async ({ to, TemplateName,  messageContent, fullTemplate}) => {
     setLoading(true);
+    console.log('fullTemplate in API call:', fullTemplate); 
+    console.log('messageContent in API call:', messageContent);
+
     try {
       // Step 1: Opt-in
       const optinUrl = `https://vapi.instaalerts.zone/optin?action=optin&pin=${user.WhatsAppBearer}&optinid=${user.WhatsAppSenderID}&mobile=${to}`;
@@ -49,6 +53,15 @@ const TemplateCard = ({ template, recipientNumber }) => {
       const bearerToken = user.WhatsAppBearer; // from context- 'Ze2uKXpEGT3phoZKEVjaiQ=='
       console.log('bearerToken:', bearerToken);
       
+      // Build parameterValues if variables exist
+      let parameterValues = undefined;
+      if (variableCount > 0 && variableValues.length > 0) {
+        parameterValues = {};
+        variableValues.forEach((val, idx) => {
+          parameterValues[idx] = val;
+        });
+      }
+
       const payload = {
         "message": {
           "channel": "WABA",
@@ -56,8 +69,9 @@ const TemplateCard = ({ template, recipientNumber }) => {
             "preview_url": false,
             "type": "TEMPLATE",
             "template": {
-              "templateId": TemplateName
-            }
+              "templateId": TemplateName,
+              ...(parameterValues ? { parameterValues } : {})
+            },
           },
           "recipient": {
             "to": to,
@@ -97,8 +111,43 @@ const TemplateCard = ({ template, recipientNumber }) => {
       console.log('API result:', result);
       // API result: {statusCode: '200', statusDesc: 'Successfully Accepted', mid: '410123751001143816805212'}mid: "410123751001143816805212"statusCode: "200"statusDesc: "Successfully Accepted"[[Prototype]]: Object
 
+      // Step 3: Save sent message details to server
+      if (result) {
+        // Alert.alert('Success', 'Message Sent!');
+        /* 
+            "Data": [
+        {
+            "Status": "Admin",
+            "Related_DealerCode": "trial",
+            "LoginID": "a1030363-9965-468c-a01e-c270f4c88bcd",
+            "WhatsAppSenderID": "917877300615",
+            "WhatsAppUserName": "LoadWABA",
+            "WhatsAppPassword": "Aspcnv33@waba",
+            "WhatsAppBearer": "Ze2uKXpEGT3phoZKEVjaiQ=="
+        }
+    ]
+         */
+        // 👇 MODIFIED: Prepare the details object with ALL parameters
+        const messageDetailsToSave = {
+          sender: user.WhatsAppSenderID,
+          logId: user.LoginID ,
+          receiver: to,
+          templateContent: messageContent,
+          mid: result.mid,
+          serviceType: fullTemplate.ServiceType,
+          imagePath: fullTemplate.ImagePath,
+        
+        };
+        
+        // Call the save function with the complete details
+        saveSentMessage(messageDetailsToSave);
+
+      } else {
+        throw new Error('Message sent, but received an invalid response.');
+      }
+
     } catch (err) {
-      alert('Error: ' + err.message);
+      // Alert.alert('Error: ' + err.message);
       console.error(err);
     } finally {
       setLoading(false);
@@ -118,6 +167,8 @@ const TemplateCard = ({ template, recipientNumber }) => {
     const newValues = [...variableValues];
     newValues[index] = text;
     setVariableValues(newValues);
+        console.log('variable values:', variableValues);
+
   };
 
   //  "Confirm" button in the modal is clicked
@@ -135,13 +186,24 @@ const TemplateCard = ({ template, recipientNumber }) => {
   const handleFinalSend = () => {
     // Use the finalMessage if it exists, otherwise use the original template
     const messageToSend = finalMessage || Template;
-    // Dynamic values
-    
-    const to = recipientNumber;
-    sendMessageApi({ to, TemplateName });
-    
 
+    const to = recipientNumber;
+    sendMessageApi({ to, TemplateName, messageContent: messageToSend, fullTemplate: template });
+    
   };
+     // 👇 MODIFIED: handleFinalSend now passes the entire `template` object
+  // const handleFinalSend = () => {
+  //   const messageToSend = finalMessage || Template;
+  //   const to = recipientNumber;
+    
+  //   // Pass the final message text and the full template object to the API function
+  //   sendMessageApi({ 
+  //     to, 
+  //     messageContent: messageToSend, 
+  //     fullTemplate: template // Pass the whole template prop here
+  //   });
+  // };
+
 
   return (
     <View style={styles.card}>
@@ -207,6 +269,9 @@ const TemplateCard = ({ template, recipientNumber }) => {
             <Text style={styles.previewContent}>{finalMessage}</Text>
           </View>
         )}
+         <View>
+            <Text>Category: <Text style={styles.boldText}>{Category}</Text></Text>
+          </View>
 
         {/* Action Buttons */}
         <View style={styles.buttonRow}>
@@ -217,7 +282,7 @@ const TemplateCard = ({ template, recipientNumber }) => {
               <Text style={styles.secondaryButtonText}>{finalMessage ? 'Edit Variables' : 'Set Variables'}</Text>
             </TouchableOpacity>
           )}
-
+            
           <TouchableOpacity
             onPress={handleFinalSend} 
             style={[styles.button, styles.primaryButton]}
@@ -225,6 +290,7 @@ const TemplateCard = ({ template, recipientNumber }) => {
             disabled={variableCount > 0 && !finalMessage}>
             <Text style={styles.primaryButtonText}>Send</Text>
           </TouchableOpacity>
+        
         </View>
       </View>
     </View>
