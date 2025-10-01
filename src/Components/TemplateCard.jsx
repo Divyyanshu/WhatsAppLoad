@@ -1,119 +1,255 @@
-// src/components/TemplateCard.jsx
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Linking } from 'react-native';
+import React, { useState, useEffect, useContext } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  Button,
+  ScrollView,
+} from 'react-native';
 import { COLORS } from '../Constants/Colors';
-import Video  from 'react-native-video';
-const TemplateCard = ({ template }) => {
-  const { TemplateName, TemplateType, Template, ImagePath, FileName, Category } = template;
+import Video from 'react-native-video';
+import { UserContext } from '../Context/UserContext';
 
-  // Function to render the template message, handling newlines and variables
+import { saveSentMessage } from '../Utils/api';
+
+const TemplateCard = ({ template, recipientNumber }) => {
+
+  const { Template, TemplateType, ImagePath, FileName, TemplateName, ServiceType, templateId } = template;
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [variableCount, setVariableCount] = useState(0);
+  const [variableValues, setVariableValues] = useState([]);
+  const [finalMessage, setFinalMessage] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const {user} = useContext(UserContext);  
+
+  useEffect(() => {
+    const matches = Template.match(/{Variable}/g) || [];
+    const count = matches.length;
+    setVariableCount(count);
+    setVariableValues(Array(count).fill(''));
+    setFinalMessage(null);
+  }, [Template]);
+
+  // --- API CALL LOGIC for send message ---
+  const sendMessageApi = async ({ to, TemplateName }) => {
+    setLoading(true);
+    try {
+      // Step 1: Opt-in
+      const optinUrl = `https://vapi.instaalerts.zone/optin?action=optin&pin=${user.WhatsAppBearer}&optinid=${user.WhatsAppSenderID}&mobile=${to}`;
+      const optinRes = await fetch(optinUrl, { method: 'POST' });
+      console.log(optinRes);
+      if (!optinRes.ok) throw new Error('Opt-in failed');
+
+      // Step 2: Send Message
+      const bearerToken = user.WhatsAppBearer; // from context- 'Ze2uKXpEGT3phoZKEVjaiQ=='
+      console.log('bearerToken:', bearerToken);
+      
+      const payload = {
+        "message": {
+          "channel": "WABA",
+          "content": {
+            "preview_url": false,
+            "type": "TEMPLATE",
+            "template": {
+              "templateId": TemplateName
+            }
+          },
+          "recipient": {
+            "to": to,
+            "recipient_type": "individual",
+            "reference": {
+              "cust_ref": "Some Customer Ref",
+              "messageTag1": "Message Tag Val1",
+              "conversationId": "Some Optional Conversation ID"
+            }
+          },
+          "sender": {
+            "from": user.WhatsAppSenderID
+          },
+          "preferences": {
+            "webHookDNId": "1001"
+          }
+        },
+        "metaData": {
+          "version": "v1.0.9"
+        }
+      };
+      console.log('Sending payload:', JSON.stringify(payload, null, 2)); // to check payload
+    //  sending template msg to user on whatsapp
+      const sendRes = await fetch('https://rcmapi.instaalerts.zone/services/rcm/sendMessage', {
+        method: 'POST',
+        headers: {
+          'Authentication': `Bearer ${bearerToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      console.log(sendRes);
+      
+      if (!sendRes.ok) throw new Error('Send message failed');
+      const result = await sendRes.json();
+      // alert('Message Sent!');
+      console.log('API result:', result);
+      // API result: {statusCode: '200', statusDesc: 'Successfully Accepted', mid: '410123751001143816805212'}mid: "410123751001143816805212"statusCode: "200"statusDesc: "Successfully Accepted"[[Prototype]]: Object
+
+    } catch (err) {
+      alert('Error: ' + err.message);
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderTemplateText = (text) => {
-    // Replace {Variable} placeholders with a visual indicator
-    const formattedText = text.replace(/{Variable}/g, '<VARIABLE>');
-    
-    // Split by \r\n to render as separate text lines
-    const lines = formattedText.split(/\r\n|\n/g);
+    const lines = text.split(/\r\n|\n/g);
     return lines.map((line, index) => (
       <Text key={index} style={styles.templateContent}>
-        {/* Basic parsing for bold/italic if needed, or use a rich text component */}
         {line.includes('*') ? <Text style={styles.boldText}>{line.replace(/\*/g, '')}</Text> : line}
       </Text>
     ));
   };
 
-  // const handleMediaPress = () => {
-  //   if (ImagePath) {
-  //     // For images, videos, and documents, attempt to open the URL
-  //     Linking.openURL(ImagePath).catch(err => console.error("Couldn't load page", err));
-  //   }
-  // };
+  const handleVariableChange = (text, index) => {
+    const newValues = [...variableValues];
+    newValues[index] = text;
+    setVariableValues(newValues);
+  };
+
+  //  "Confirm" button in the modal is clicked
+  const handleConfirmVariables = () => {
+    let constructedMessage = Template;
+    variableValues.forEach(value => {
+      // Replace only the first occurrence to handle multiple variables correctly
+      constructedMessage = constructedMessage.replace('{Variable}', value || '<empty>');
+    });
+    setFinalMessage(constructedMessage); // Set the final message for preview
+    setIsModalVisible(false); // Close the modal
+  };
+
+  //  Final "Send" button is clicked
+  const handleFinalSend = () => {
+    // Use the finalMessage if it exists, otherwise use the original template
+    const messageToSend = finalMessage || Template;
+    // Dynamic values
+    
+    const to = recipientNumber;
+    sendMessageApi({ to, TemplateName });
+    
+
+  };
 
   return (
     <View style={styles.card}>
-      {/* <Text style={styles.templateName}>{TemplateName}</Text>
-      <Text style={styles.templateType}>Type: {TemplateType}</Text>
-      {Category && <Text style={styles.category}>Category: {Category}</Text>} */}
-      {/* Display media if ImagePath is available and it's not a Text Template */}
-        {ImagePath && ImagePath !== "https://loadcrm.com/Portal" && (
-          <TouchableOpacity  style={styles.mediaContainer}>
-            {TemplateType === 'Image Template' && (
-              <Image source={{ uri: ImagePath }} style={styles.mediaImage} resizeMode="contain" />
-            )}
-            {TemplateType === 'Video Template' && (
-               <Video
-        source={{ uri: ImagePath }}
-        style={styles.video}
-        controls={true}   // shows play/pause/seek controls
-        resizeMode="contain" // contain, cover, stretch
-        paused={true}   // autoplay (set true if you want it paused initially)
-      />
-            )}
-            {TemplateType === 'Document Template' && (
-              <View style={styles.mediaPlaceholder}>
-                <Text style={styles.mediaText}>📄 Document: {FileName || 'Click to View'}</Text>
-                <Text style={styles.mediaLink}>{ImagePath}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        )}
+      {loading && (
+        <View style={{ position: 'absolute', top: 10, left: 10, right: 10, zIndex: 10 }}>
+          <Text style={{ color: 'blue', textAlign: 'center' }}>Sending...</Text>
+        </View>
+      )}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isModalVisible}
+        onRequestClose={() => setIsModalVisible(false)}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalTitle}>Set Template Variables</Text>
+            <ScrollView>
+              {variableValues.map((value, index) => (
+                <View key={index}>
+                  <Text style={styles.inputLabel}>Variable #{index + 1}</Text>
+                  <TextInput
+                    style={styles.input}
+                    onChangeText={(text) => handleVariableChange(text, index)}
+                    value={value}
+                    placeholder={`Enter value for variable ${index + 1}`}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.modalButtonContainer}>
+              <Button title="Cancel" onPress={() => setIsModalVisible(false)} color="gray" />
+              <Button title="Confirm" onPress={handleConfirmVariables} />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
+      {/* Media Content */}
+      {ImagePath && ImagePath !== "https://loadcrm.com/Portal" && (
+        <View style={styles.mediaContainer}>
+          {TemplateType === 'Image Template' && (
+            <Image source={{ uri: ImagePath }} style={styles.mediaImage} resizeMode="contain" />
+          )}
+          {TemplateType === 'Video Template' && (
+            <Video source={{ uri: ImagePath }} style={styles.video} controls={true} paused={true} />
+          )}
+          {TemplateType === 'Document Template' && (
+            <View style={styles.mediaPlaceholder}>
+              <Text style={styles.mediaText}>📄 Document: {FileName || 'View'}</Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Original Template Text */}
       <View style={styles.templateBody}>
-        {/* Render text templates or captions for media */}
-        {(TemplateType === 'Text Template' || Template) && (
-          <View style={styles.textContainer}>
-            {renderTemplateText(Template)}
+        <View style={styles.textContainer}>{renderTemplateText(Template)}</View>
+
+        {/* Step 4: Show the final message preview if it exists */}
+        {finalMessage && (
+          <View style={styles.previewContainer}>
+            <Text style={styles.previewTitle}>Preview:</Text>
+            <Text style={styles.previewContent}>{finalMessage}</Text>
           </View>
         )}
 
-        <View style={{ alignItems: 'flex-end', }}>
-          <TouchableOpacity  style={{ backgroundColor: COLORS.light.primary, paddingHorizontal: 20,paddingVertical:5, borderRadius: 5}}>
-          <Text style={{ color: '#fff' }}>Send</Text>
-        </TouchableOpacity>
-        </View>
+        {/* Action Buttons */}
+        <View style={styles.buttonRow}>
+          {variableCount > 0 && (
+            <TouchableOpacity
+              onPress={() => setIsModalVisible(true)} // Step 2: Open modal
+              style={[styles.button, styles.secondaryButton]}>
+              <Text style={styles.secondaryButtonText}>{finalMessage ? 'Edit Variables' : 'Set Variables'}</Text>
+            </TouchableOpacity>
+          )}
 
+          <TouchableOpacity
+            onPress={handleFinalSend} 
+            style={[styles.button, styles.primaryButton]}
+            // Disable send button if variables are required but not yet set
+            disabled={variableCount > 0 && !finalMessage}>
+            <Text style={styles.primaryButtonText}>Send</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 };
 
+// --- STYLES ---
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderRadius: 8,
-    padding: 15,
     marginVertical: 8,
     marginHorizontal: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3, // For Android shadow
-  },
-  templateName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-    color: '#333',
-  },
-  templateType: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 3,
-  },
-  category: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 10,
-    fontStyle: 'italic',
+    elevation: 3,
+    overflow: 'hidden', // Ensures media corners are rounded
   },
   templateBody: {
-    marginTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    paddingTop: 10,
+    padding: 15,
   },
   textContainer: {
-    marginBottom: 10,
+    marginBottom: 15,
   },
   templateContent: {
     fontSize: 14,
@@ -124,36 +260,121 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   mediaContainer: {
-    marginTop: 10,
-    borderRadius: 5,
-    overflow: 'hidden',
     backgroundColor: '#f0f0f0',
   },
   mediaImage: {
     width: '100%',
-    height: 250, // Fixed height for images
+    height: 200,
+  },
+  video: {
+    width: "100%",
+    height: 200,
   },
   mediaPlaceholder: {
     padding: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 100, // Fixed height for video/document placeholders
+    height: 100,
   },
   mediaText: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#555',
+  },
+  previewContainer: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 5,
+    padding: 10,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  previewTitle: {
+    fontWeight: 'bold',
     marginBottom: 5,
+    color: '#333',
   },
-  mediaLink: {
-    fontSize: 12,
-    color: '#007bff', // Blue for links
-    textDecorationLine: 'underline',
+  previewContent: {
+    color: '#555',
+    fontStyle: 'italic',
   },
-   video: {
-    width: "100%",
-    height: 250,   // adjust as needed
-  }
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingTop: 15,
+  },
+  button: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 5,
+    marginLeft: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  primaryButton: {
+    backgroundColor: COLORS.light.primary,
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    backgroundColor: '#f0f0f0',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  secondaryButtonText: {
+    color: '#333',
+    fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 25,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: '90%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  inputLabel: {
+    alignSelf: 'flex-start',
+    marginLeft: 10,
+    marginTop: 10,
+    color: 'gray',
+  },
+  input: {
+    height: 40,
+    width: 250,
+    marginVertical: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 10,
+    borderRadius: 5,
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+    marginTop: 20,
+  },
 });
 
 export default TemplateCard;

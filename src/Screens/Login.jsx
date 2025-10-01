@@ -1,5 +1,5 @@
 // LoginScreen.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   SafeAreaView,
   View,
@@ -23,6 +23,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LoginPhoto } from '../Assets/index.js';
 import { COLORS } from '../Constants/Colors.jsx';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { UserContext } from '../Context/UserContext.js';
 
 const colorScheme = Appearance.getColorScheme();
 const theme = colorScheme === 'dark' ? COLORS.dark : COLORS.light;
@@ -39,6 +40,8 @@ const LoginScreen = () => {
   const hideToast = () => setToast({ visible: false, message: '' });
 
   const navigation = useNavigation();
+
+  const { setUser, setAuthenticated } = useContext(UserContext);
 
   const checkAsyncStorage = async () => {
     try {
@@ -92,11 +95,15 @@ const LoginScreen = () => {
       const result = await response.json();
       if (result.Message === 'Success' && result.Data && result.Data.length > 0) {
         // Store user data in AsyncStorage
-        await AsyncStorage.setItem('user', JSON.stringify(result.Data[0]));
+                const userData = result.Data[0];
+
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
         // console.log('Login successful:', result.Data[0])
         const userFromLocal = await AsyncStorage.getItem('user');
         console.log('User from local storage:', JSON.parse(userFromLocal));
-        navigation.navigate('OwnChat', { username, userData: result.Data[0] });
+        setUser(userData); //context update
+        // setAuthenticated(true);
+        navigation.replace('OwnChat', { username, userData });
       } else {
         showToast(result.Message || 'Invalid credentials');
       }

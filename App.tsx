@@ -4,7 +4,7 @@
  *
  * @format
  */
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { NewAppScreen } from '@react-native/new-app-screen';
 import { StatusBar, StyleSheet, useColorScheme, View, Text, ActivityIndicator } from 'react-native';
 import LoginScreen from './src/Screens/Login';
@@ -14,7 +14,7 @@ import OwnChat from './src/Screens/OwnChat';
 import ChatScreen from './src/Screens/ChatScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TemplateListScreen from './src/Screens/TemplateListScreen';
-import { UserProvider } from './src/Context/UserContext';
+import { UserContext, UserProvider } from './src/Context/UserContext';
 
  
 function LoadingScreen() {
@@ -32,14 +32,16 @@ const Stack = createStackNavigator();
 
 function RootNavigator() {
   const [initialRoute, setInitialRoute] = useState<string | null>(null);
-
+   const { authenticated } = useContext(UserContext);
+   const { user } = useContext(UserContext);
   useEffect(() => {
     const checkUser = async () => {
       // Simulate loading
-      await new Promise(res => setTimeout(res, 1000));
+      // await new Promise(res => setTimeout(res, 1000));
       const user = await AsyncStorage.getItem('user');
       setInitialRoute(user ? 'OwnChat' : 'Login');
-    };
+
+    }
     checkUser();
   }, []);
 
@@ -53,7 +55,7 @@ function RootNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         <Stack.Screen name="OwnChat" component={OwnChat} options={{ headerShown: false }} />
         <Stack.Screen name="ChatScreen" component={ChatScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Templates" component={TemplateListScreen} />
+        <Stack.Screen name="Templates" component={TemplateListScreen} options={{ title: "Send template messages"}}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

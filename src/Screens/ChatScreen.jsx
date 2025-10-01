@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TextInput, Image, SectionList, TouchableOpacity } from 'react-native';
 import { COLORS } from '../Constants/Colors';
 
@@ -6,8 +6,10 @@ import Feather from 'react-native-vector-icons/Feather'; // Using Feather icons
 import FontAwesome6 from 'react-native-vector-icons/FontAwesome6'; // Using Feather icons
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import { UserContext } from '../Context/UserContext';
+import { API_URL } from '../config';
 
-const API_URL = 'https://www.loadcrm.com/whatsappmobileapis/api';
+
 const sampleMessages = [
   {
     id: '1',
@@ -53,18 +55,23 @@ function groupChatsByDate(chats) {
 const ChatScreen = ({ route }) => {
   const { number, chats } = route.params;
   const [checkMessageEligibility, setCheckMessageEligibility] = useState(false);
-  console.log('checkMessageEligibility', checkMessageEligibility);
+  // console.log('checkMessageEligibility', checkMessageEligibility);
   const [message, setMessage] = useState('');
   const navigation = useNavigation();
   const sectionListRef = useRef(null);
 
+  const { user, authenticated } = useContext(UserContext);
+  // console.log("User from context:", user);
+
   // Check message eligibility  here for showing templete option or input box
   const checkEligibility = async () => {
     try {
-      const userStr = await AsyncStorage.getItem('user');
-      if (!userStr) return;
-      const user = JSON.parse(userStr);
+      // const userStr = await AsyncStorage.getItem('user');
+      // if (!userStr) return;
+      // const user = JSON.parse(userStr);
       const senderNo = user.WhatsAppSenderID;
+      // console.log('senderNo:', senderNo, number);
+
       const response = await fetch(`${API_URL}/checkLastuserMessage?senderid=${senderNo}&clientno=${number}`, { method: 'POST' });
       const data = await response.json();
       console.log('Eligibility response:', data);
@@ -148,7 +155,10 @@ const ChatScreen = ({ route }) => {
                   {item.Imagepath ? (
                     <Image
                       source={{ uri: item.Imagepath }}
-                      style={{ width: 200, height: 200, borderRadius: 10, marginBottom: 4 }}
+                      style={{
+                        width: 250, height: 250,
+                        borderRadius: 10, marginBottom: 4
+                      }}
                       resizeMode="cover"
                     />
                   ) : null}
@@ -211,12 +221,12 @@ const ChatScreen = ({ route }) => {
         <View style={styles.inputContainer}>
           <TouchableOpacity
             style={styles.templateButton}
-            onPress={() => navigation.navigate('Templates')}
+            onPress={() => navigation.navigate('Templates', { number })}
           >
-           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-             <Feather name="file-text" size={20} color="#000" style={{ marginRight: 8 }} />
-            <Text style={styles.templateButtonText}>See Template List</Text>
-           </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Feather name="file-text" size={20} color="#000" style={{ marginRight: 8 }} />
+              <Text style={styles.templateButtonText}>See Template List</Text>
+            </View>
           </TouchableOpacity>
         </View>
       )}

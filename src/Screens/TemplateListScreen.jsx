@@ -7,13 +7,17 @@ import { UserContext } from '../Context/UserContext';
 
 const API_URL = 'https://www.loadcrm.com/whatsappmobileapis/api';
 
-const TemplateListScreen = () => {
+const TemplateListScreen = ({ route }) => {
+
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const number = route.params?.number;
+  // console.log("Recipient number from params:", number);
+  
   const { user, authenticated } = useContext(UserContext);
-  console.log("User from context:", user);
-  console.log("Authenticated from context:", authenticated);
+  // console.log("User from context:", user);
+  // console.log("Authenticated from context:", authenticated);
 
   useEffect(() => {
     const fetchTemplates = async () => {
@@ -22,7 +26,7 @@ const TemplateListScreen = () => {
         const Related_DealerCode = user.Related_DealerCode;
         const response = await fetch(`${API_URL}/getwhatsapptemplate?username=${Related_DealerCode}`, { method: 'POST' });
         const jsonResponse = await response.json();
-        console.log("Fetched templates:", jsonResponse);
+        // console.log("Fetched templates:");
         setTemplates(jsonResponse.Data);
       } catch (err) {
         setError("Failed to load templates: " + err.message);
@@ -57,7 +61,7 @@ const TemplateListScreen = () => {
       <FlatList
         data={templates}
         keyExtractor={(item) => item.Id}
-        renderItem={({ item }) => <TemplateCard template={item} />}
+        renderItem={({ item }) => <TemplateCard template={item}  recipientNumber={number} user={user} />}
         contentContainerStyle={styles.listContent}
       />
     </SafeAreaView>

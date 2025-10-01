@@ -21,16 +21,24 @@ export const UserProvider = ({ children }) => {
     loadUser();
   }, []);
 
+
+  const login = (userData) => {
+    setUser(userData);
+    setAuthenticated(true);
+  };
+
   // Logout function
   const logout = async (navigation) => {
-    await AsyncStorage.multiRemove(['user', 'ownChats', 'rawOwnChats']);
+    // await AsyncStorage.multiRemove(['user', 'ownChats', 'rawOwnChats']);
+        await AsyncStorage.clear();
+
     setUser(null);
     setAuthenticated(false);
     if (navigation) navigation.replace('Login');
   };
 
   return (
-    <UserContext.Provider value={{ user, setUser, authenticated, logout, loading }}>
+    <UserContext.Provider value={{ user, setUser: login, authenticated, setAuthenticated, logout, loading }}>
       {children}
     </UserContext.Provider>
   );
