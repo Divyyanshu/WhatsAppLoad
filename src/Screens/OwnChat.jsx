@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useMemo, useCallback, useContext } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, Modal, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, Modal, RefreshControl, Platform } from 'react-native';
+import { request, check, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import Contacts from 'react-native-contacts';
 import Feather from 'react-native-vector-icons/Feather';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserContext } from '../Context/UserContext';
+import { API_URL } from '../config';
 
-const API_URL = 'https://www.loadcrm.com/whatsappmobileapis/api';
 
 // --- Utility Functions (moved outside the component) ---
 const pad = n => (n < 10 ? '0' + n : n);
@@ -109,6 +111,8 @@ const OwnChat = ({ navigation }) => {
 
   useEffect(() => {
     loadChats();
+     // This call remains the same. It triggers the one-time process.
+    // syncContactsInBackground(); 
   }, [loadChats]);
 
   // 🚀 3. Pull-to-refresh handler
@@ -151,6 +155,63 @@ const OwnChat = ({ navigation }) => {
     );
   }, [sortedContactArray, search]);
 
+  // Background Contact Sync Function ---
+  // const syncContactsInBackground = useCallback(async () => {
+  //   // 1. Define a new key for our one-time flag.
+  //   const PERMISSION_ASKED_KEY = '@contact_permission_has_been_asked';
+
+  //   try {
+  //     // 2. Check if we have already run this process once before.
+  //     const hasBeenAsked = await AsyncStorage.getItem(PERMISSION_ASKED_KEY);
+  //     if (hasBeenAsked) {
+  //       console.log('The permission process has run before. Skipping.');
+  //       return; // Exit the function immediately.
+  //     }
+
+  //     // If we're here, it means this is the very first time.
+  //     console.log('Running the one-time contact permission process...');
+  //     const permission = Platform.select({
+  //       ios: PERMISSIONS.IOS.CONTACTS,
+  //       android: PERMISSIONS.ANDROID.READ_CONTACTS,
+  //     });
+
+  //     // 3. Request the permission. This will show the pop-up to the user.
+  //     const status = await request(permission);
+
+  //     // 4. If permission is granted, fetch and store the contacts.
+  //     if (status === RESULTS.GRANTED) {
+  //       console.log('Contact permission granted. Fetching contacts...');
+  //       const contacts = await Contacts.getAll();
+  //       console.log(contacts);
+        
+  //       const simplifiedContacts = contacts.reduce((acc, contact) => {
+  //         if (contact.givenName && contact.phoneNumbers && contact.phoneNumbers.length > 0) {
+  //           const name = `${contact.givenName} ${contact.familyName || ''}`.trim();
+  //           contact.phoneNumbers.forEach(phone => {
+  //             const normalizedNumber = phone.number.replace(/[\s-()]/g, '');
+  //             acc[normalizedNumber] = name;
+  //           });
+  //         }
+  //         return acc;
+  //       }, {});
+
+  //       await AsyncStorage.setItem('@device_contacts', JSON.stringify(simplifiedContacts));
+  //       console.log(`Successfully synced and stored ${Object.keys(simplifiedContacts).length} contacts.`);
+  //     } else {
+  //       console.log('Contact permission was not granted. Status:', status);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error during one-time contact sync:', error);
+  //   } finally {
+  //     // 5. IMPORTANT: Set the flag to 'true' AFTER the attempt,
+  //     // regardless of whether permission was granted or denied.
+  //     // This ensures we never ask again.
+  //     await AsyncStorage.setItem(PERMISSION_ASKED_KEY, 'true');
+  //   }
+  // }, []); 
+
+
+  // handle logout function
   const handleLogout = async () => {
     setShowModal(false);
     await logout(navigation);
@@ -172,16 +233,19 @@ const OwnChat = ({ navigation }) => {
       console.log('All AsyncStorage Keys:', allKeys);
 
       // for (const key of allKeys) {
-      //   const value = await AsyncStorage.getItem(key);
+      //   const value = await AsyncStorage.getItem(key); 
       //   console.log(`Key: ${key}, Value: ${value}`);
       // }
+
+    //  const allcontact=  await AsyncStorage.getItem('@device_contacts');
+    //   console.log("All Contacts from AsyncStorage:", allcontact);
+
     } catch (error) {
       console.error('Error retrieving AsyncStorage data:', error);
     }
   };
 
   // Call this function in your component's lifecycle or a button press
-  // For example, in a useEffect hook:
   useEffect(() => {
     checkAsyncStorage();
   }, []);
@@ -245,7 +309,6 @@ const OwnChat = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  // ... (Keep your existing styles)
   container: { flex: 1, backgroundColor: '#fff' },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', margin: 16 },
   header: { fontSize: 22, fontWeight: 'bold' },

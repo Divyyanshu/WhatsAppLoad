@@ -24,10 +24,10 @@ import { LoginPhoto } from '../Assets/index.js';
 import { COLORS } from '../Constants/Colors.jsx';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserContext } from '../Context/UserContext.js';
+import { API_URL } from '../config.js';
 
 const colorScheme = Appearance.getColorScheme();
 const theme = colorScheme === 'dark' ? COLORS.dark : COLORS.light;
-const API_URL = 'https://www.loadcrm.com/whatsappmobileapis/api'; // https://www.loadcrm.com/whatsappmobileapis/api
 
 const LoginScreen = () => {
   const [username, setUsername] = useState('trial');
@@ -92,10 +92,12 @@ const LoginScreen = () => {
         `${API_URL}/login?Username=${encodeURIComponent(username)}&Password=${encodeURIComponent(password)}`,
         { method: 'POST' }
       );
+      console.log('Login response status:', response, response.status);
+      
       const result = await response.json();
       if (result.Message === 'Success' && result.Data && result.Data.length > 0) {
         // Store user data in AsyncStorage
-                const userData = result.Data[0];
+        const userData = result.Data[0];
 
         await AsyncStorage.setItem('user', JSON.stringify(userData));
         // console.log('Login successful:', result.Data[0])
@@ -105,7 +107,7 @@ const LoginScreen = () => {
         // setAuthenticated(true);
         navigation.replace('OwnChat', { username, userData });
       } else {
-        showToast(result.Message || 'Invalid credentials');
+        showToast(result.Data || 'Invalid credentials');
       }
     } catch (error) {
       showToast('Something went wrong. Please try again.');
@@ -155,7 +157,7 @@ const LoginScreen = () => {
                 message={toast.message}
                 visible={toast.visible}
                 onHide={hideToast}
-                duration={1000}
+                duration={600}
               />
             </View>
             {!keyboardVisible && (

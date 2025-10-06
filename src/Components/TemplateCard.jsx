@@ -16,18 +16,21 @@ import Video from 'react-native-video';
 import { UserContext } from '../Context/UserContext';
 
 import { saveSentMessage } from '../Utils/api';
+import ToastMessage from './ToastMessage';
+import AuthenticatedPdfViewer from './AuthenticatedPdfViewer.jsx';
+import Pdf from 'react-native-pdf';
 
 const TemplateCard = ({ template, recipientNumber }) => {
 
-  const { Template, TemplateType, ImagePath, FileName, TemplateName, ServiceType, templateId ,Category} = template;
+  const { Template, TemplateType, ImagePath, FileName, TemplateName, ServiceType, templateId, Category } = template;
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [variableCount, setVariableCount] = useState(0);
   const [variableValues, setVariableValues] = useState([]);
   const [finalMessage, setFinalMessage] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const {user} = useContext(UserContext);  
-  
+  const { user } = useContext(UserContext);
+
   useEffect(() => {
     const matches = Template.match(/{Variable}/g) || [];
     const count = matches.length;
@@ -37,42 +40,180 @@ const TemplateCard = ({ template, recipientNumber }) => {
   }, [Template]);
 
   // --- API CALL LOGIC for send message ---const sendMessageApi = async ({ to, messageContent, fullTemplate })
-  const sendMessageApi = async ({ to, TemplateName,  messageContent, fullTemplate}) => {
+  // const sendMessageApi = async ({ to, TemplateName,  messageContent, fullTemplate}) => {
+  //   setLoading(true);
+  //   console.log('fullTemplate in API call:', fullTemplate); 
+  //   console.log('messageContent in API call:', messageContent);
+
+  //   try {
+  //     // Step 1: Opt-in
+  //     const optinUrl = `https://vapi.instaalerts.zone/optin?action=optin&pin=${user.WhatsAppBearer}&optinid=${user.WhatsAppSenderID}&mobile=${to}`;
+  //     const optinRes = await fetch(optinUrl, { method: 'POST' });
+  //     console.log(optinRes);
+  //     if (!optinRes.ok) throw new Error('Opt-in failed');
+
+  //     // Step 2: Send Message
+  //     const bearerToken = user.WhatsAppBearer; // from context- 'Ze2uKXpEGT3phoZKEVjaiQ=='
+  //     console.log('bearerToken:', bearerToken);
+
+  //     // Build parameterValues if variables exist
+  //     let parameterValues = undefined;
+  //     if (variableCount > 0 && variableValues.length > 0) {
+  //       parameterValues = {};
+  //       variableValues.forEach((val, idx) => {
+  //         parameterValues[idx] = val;
+  //       });
+  //     }
+  // /* for Image Template-  
+  //      "content":{
+  //      "type": "MEDIA_TEMPLATE",
+  //      }
+
+  // */
+
+
+  //     const payload = {
+  //       "message": {
+  //         "channel": "WABA",
+  //         "content": {
+  //           "preview_url": false,
+  //           "type": "TEMPLATE",
+  //           "template": {
+  //             "templateId": TemplateName,
+  //             ...(parameterValues ? { parameterValues } : {})
+  //           },
+  //         },
+  //         "recipient": {
+  //           "to": to,
+  //           "recipient_type": "individual",
+  //           "reference": {
+  //             "cust_ref": "Some Customer Ref",
+  //             "messageTag1": "Message Tag Val1",
+  //             "conversationId": "Some Optional Conversation ID"
+  //           }
+  //         },
+  //         "sender": {
+  //           "from": user.WhatsAppSenderID
+  //         },
+  //         "preferences": {
+  //           "webHookDNId": "1001"
+  //         }
+  //       },
+  //       "metaData": {
+  //         "version": "v1.0.9"
+  //       }
+  //     };
+
+  //     console.log('Sending payload:', JSON.stringify(payload, null, 2)); // to check payload
+  //   //  sending template msg to user on whatsapp
+  //     const sendRes = await fetch('https://rcmapi.instaalerts.zone/services/rcm/sendMessage', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Authentication': `Bearer ${bearerToken}`,
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify(payload),
+  //     });
+  //     console.log(sendRes);
+
+  //     if (!sendRes.ok) throw new Error('Send message failed');
+  //     const result = await sendRes.json();
+  //     // alert('Message Sent!');
+  //     console.log('API result:', result);
+  //     // API result: {statusCode: '200', statusDesc: 'Successfully Accepted', mid: '410123751001143816805212'}mid: "410123751001143816805212"statusCode: "200"statusDesc: "Successfully Accepted"[[Prototype]]: Object
+
+  //     // Step 3: Save sent message details to server
+  //     if (result) {
+  //        console.log('Message sent successfully, now saving details to server...');
+  //       // 👇 MODIFIED: Prepare the details object with ALL parameters
+  //       const messageDetailsToSave = {
+  //         sender: user.WhatsAppSenderID,
+  //         logId: user.LoginID ,
+  //         receiver: to,
+  //         templateContent: messageContent,
+  //         mid: result.mid,
+  //         serviceType: fullTemplate.ServiceType,
+  //         imagePath: fullTemplate.ImagePath,    
+  //       };
+
+  //       // Call the save function with the complete details
+  //       saveSentMessage(messageDetailsToSave);
+
+  //     } else {
+  //       throw new Error('Message sent, but received an invalid response.');
+  //     }
+
+  //   } catch (err) {
+  //     // Alert.alert('Error: ' + err.message);
+  //     console.error(err);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+  const sendMessageApi = async ({ to, TemplateName, messageContent, fullTemplate }) => {
     setLoading(true);
-    console.log('fullTemplate in API call:', fullTemplate); 
-    console.log('messageContent in API call:', messageContent);
+    console.log('Sending template type:', fullTemplate.TemplateType);
 
     try {
       // Step 1: Opt-in
       const optinUrl = `https://vapi.instaalerts.zone/optin?action=optin&pin=${user.WhatsAppBearer}&optinid=${user.WhatsAppSenderID}&mobile=${to}`;
       const optinRes = await fetch(optinUrl, { method: 'POST' });
-      console.log(optinRes);
       if (!optinRes.ok) throw new Error('Opt-in failed');
 
-      // Step 2: Send Message
-      const bearerToken = user.WhatsAppBearer; // from context- 'Ze2uKXpEGT3phoZKEVjaiQ=='
-      console.log('bearerToken:', bearerToken);
-      
-      // Build parameterValues if variables exist
-      let parameterValues = undefined;
+      // Step 2: Prepare to send the message
+      const bearerToken = user.WhatsAppBearer;
+        let mediaType = 'text';  
+        let msg_type = 'TEXT';
+
+      // Build the parameter values object, common for all templates.
+      let parameterValues;
       if (variableCount > 0 && variableValues.length > 0) {
         parameterValues = {};
         variableValues.forEach((val, idx) => {
-          parameterValues[idx] = val;
+          parameterValues[idx] = val || ''; // Use an empty string if a value is missing
         });
       }
 
+      // Conditionally build the main content block
+      let messageContentBlock;
+      const isMediaTemplate = ['Image Template', 'Video Template', 'Document Template'].includes(fullTemplate.TemplateType);
+
+      if (isMediaTemplate) {
+        msg_type = 'ATTACHMENT';
+        if (fullTemplate.TemplateType === 'Image Template') mediaType = 'image';
+        if (fullTemplate.TemplateType === 'Video Template') mediaType = 'video';
+        if (fullTemplate.TemplateType === 'Document Template') mediaType = 'document';
+
+        // Build the content block for a MEDIA_TEMPLATE
+        messageContentBlock = {
+          "preview_url": false,
+          "type": "MEDIA_TEMPLATE",
+          "mediaTemplate": {
+            "templateId": fullTemplate.TemplateName,
+            "media": {
+              "type": mediaType,
+              "url": fullTemplate.ImagePath
+            },
+            ...(parameterValues && { "bodyParameterValues": parameterValues })
+          }
+        };
+      } else {
+        // Build the content block for a standard TEXT TEMPLATE
+        messageContentBlock = {
+          "preview_url": false,
+          "type": "TEMPLATE",
+          "template": {
+            "templateId": fullTemplate.TemplateName,
+            ...(parameterValues && { parameterValues })
+          }
+        };
+      }
+
+      // Construct the final payload using the dynamic content block
       const payload = {
         "message": {
           "channel": "WABA",
-          "content": {
-            "preview_url": false,
-            "type": "TEMPLATE",
-            "template": {
-              "templateId": TemplateName,
-              ...(parameterValues ? { parameterValues } : {})
-            },
-          },
+          "content": messageContentBlock, // The dynamic block is placed here
           "recipient": {
             "to": to,
             "recipient_type": "individual",
@@ -93,8 +234,10 @@ const TemplateCard = ({ template, recipientNumber }) => {
           "version": "v1.0.9"
         }
       };
-      console.log('Sending payload:', JSON.stringify(payload, null, 2)); // to check payload
-    //  sending template msg to user on whatsapp
+
+      console.log('Sending payload:', JSON.stringify(payload, null, 2));
+
+      // Step 3: Send the message via API
       const sendRes = await fetch('https://rcmapi.instaalerts.zone/services/rcm/sendMessage', {
         method: 'POST',
         headers: {
@@ -103,56 +246,40 @@ const TemplateCard = ({ template, recipientNumber }) => {
         },
         body: JSON.stringify(payload),
       });
-      console.log(sendRes);
-      
-      if (!sendRes.ok) throw new Error('Send message failed');
+      // if(sendRes.ok) ToastMessage(`Template ${fullTemplate.TemplateType} sent successfully to ${to}`);
+      if (!sendRes.ok) throw new Error(`Send message failed with status: ${sendRes.status}`);
       const result = await sendRes.json();
-      // alert('Message Sent!');
       console.log('API result:', result);
-      // API result: {statusCode: '200', statusDesc: 'Successfully Accepted', mid: '410123751001143816805212'}mid: "410123751001143816805212"statusCode: "200"statusDesc: "Successfully Accepted"[[Prototype]]: Object
 
-      // Step 3: Save sent message details to server
-      if (result) {
-        // Alert.alert('Success', 'Message Sent!');
-        /* 
-            "Data": [
-        {
-            "Status": "Admin",
-            "Related_DealerCode": "trial",
-            "LoginID": "a1030363-9965-468c-a01e-c270f4c88bcd",
-            "WhatsAppSenderID": "917877300615",
-            "WhatsAppUserName": "LoadWABA",
-            "WhatsAppPassword": "Aspcnv33@waba",
-            "WhatsAppBearer": "Ze2uKXpEGT3phoZKEVjaiQ=="
-        }
-    ]
-         */
-        // 👇 MODIFIED: Prepare the details object with ALL parameters
+      // Step 4: Save sent message details to your server
+      if (result && result.mid) {
+        console.log('Message sent successfully, now saving details to server...');
         const messageDetailsToSave = {
           sender: user.WhatsAppSenderID,
-          logId: user.LoginID ,
+          logId: user.LoginID,
           receiver: to,
           templateContent: messageContent,
           mid: result.mid,
           serviceType: fullTemplate.ServiceType,
           imagePath: fullTemplate.ImagePath,
-        
+          attachmentName: mediaType,  // image, video, document, text
+          messageType : msg_type,   // ATTACHMENT or TEXT
         };
+        console.log('Prepared message details for saving:', messageDetailsToSave);
         
-        // Call the save function with the complete details
         saveSentMessage(messageDetailsToSave);
-
       } else {
-        throw new Error('Message sent, but received an invalid response.');
+        throw new Error('Message sending was not accepted by the API.');
       }
 
     } catch (err) {
-      // Alert.alert('Error: ' + err.message);
+      Alert.alert('Error', err.message);
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
+
 
   const renderTemplateText = (text) => {
     const lines = text.split(/\r\n|\n/g);
@@ -167,7 +294,7 @@ const TemplateCard = ({ template, recipientNumber }) => {
     const newValues = [...variableValues];
     newValues[index] = text;
     setVariableValues(newValues);
-        console.log('variable values:', variableValues);
+    console.log('variable values:', variableValues);
 
   };
 
@@ -189,13 +316,13 @@ const TemplateCard = ({ template, recipientNumber }) => {
 
     const to = recipientNumber;
     sendMessageApi({ to, TemplateName, messageContent: messageToSend, fullTemplate: template });
-    
+
   };
-     // 👇 MODIFIED: handleFinalSend now passes the entire `template` object
+  // 👇 MODIFIED: handleFinalSend now passes the entire `template` object
   // const handleFinalSend = () => {
   //   const messageToSend = finalMessage || Template;
   //   const to = recipientNumber;
-    
+
   //   // Pass the final message text and the full template object to the API function
   //   sendMessageApi({ 
   //     to, 
@@ -252,9 +379,31 @@ const TemplateCard = ({ template, recipientNumber }) => {
           )}
           {TemplateType === 'Document Template' && (
             <View style={styles.mediaPlaceholder}>
-              <Text style={styles.mediaText}>📄 Document: {FileName || 'View'}</Text>
+              {/* <Text style={styles.mediaText}>📄 Document: {FileName || 'View'}</Text> */}
+              <AuthenticatedPdfViewer
+              sourceUrl={ImagePath}
+              // authToken={yourAuthToken}
+            />
+            {/* <Pdf
+                    source={{uri: ImagePath,cache:true}}
+                    onLoadProgress={(percent)=>{console.log(`Loading: ${percent}%`)}}
+                    // onLoadComplete={(numberOfPages,filePath) => {
+                    onLoadComplete={(numberOfPages,filePath) => {
+                        console.log(`Number of pages: ${numberOfPages}`);
+                    }}
+                    onPageChanged={(page,numberOfPages) => {
+                        console.log(`Current page: ${page}`);
+                    }}
+                    onError={(error) => {
+                        console.log(error);
+                    }}
+                    onPressLink={(uri) => {
+                        console.log(`Link pressed: ${uri}`);
+                    }}
+                    style={styles.pdf}/> */}
             </View>
           )}
+           
         </View>
       )}
 
@@ -269,9 +418,9 @@ const TemplateCard = ({ template, recipientNumber }) => {
             <Text style={styles.previewContent}>{finalMessage}</Text>
           </View>
         )}
-         <View>
-            <Text>Category: <Text style={styles.boldText}>{Category}</Text></Text>
-          </View>
+        <View>
+          <Text>Category: <Text style={styles.boldText}>{Category}</Text></Text>
+        </View>
 
         {/* Action Buttons */}
         <View style={styles.buttonRow}>
@@ -282,15 +431,15 @@ const TemplateCard = ({ template, recipientNumber }) => {
               <Text style={styles.secondaryButtonText}>{finalMessage ? 'Edit Variables' : 'Set Variables'}</Text>
             </TouchableOpacity>
           )}
-            
+
           <TouchableOpacity
-            onPress={handleFinalSend} 
+            onPress={handleFinalSend}
             style={[styles.button, styles.primaryButton]}
             // Disable send button if variables are required but not yet set
             disabled={variableCount > 0 && !finalMessage}>
             <Text style={styles.primaryButtonText}>Send</Text>
           </TouchableOpacity>
-        
+
         </View>
       </View>
     </View>
@@ -299,6 +448,11 @@ const TemplateCard = ({ template, recipientNumber }) => {
 
 // --- STYLES ---
 const styles = StyleSheet.create({
+   pdf: {
+        flex: 1,
+        width: '100%',
+        height: 500 // or adjust as needed
+    },
   card: {
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -340,7 +494,9 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 100,
+    width: '100%',
+    height:200,
+    maxHeight: 300,
   },
   mediaText: {
     fontSize: 16,
@@ -373,7 +529,7 @@ const styles = StyleSheet.create({
     paddingTop: 15,
   },
   button: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
     paddingVertical: 8,
     borderRadius: 5,
     marginLeft: 10,
@@ -382,10 +538,13 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: COLORS.light.primary,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
   },
   primaryButtonText: {
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: 16,
   },
   secondaryButton: {
     backgroundColor: '#f0f0f0',
