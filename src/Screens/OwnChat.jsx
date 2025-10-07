@@ -163,7 +163,7 @@ const OwnChat = ({ navigation }) => {
     return contactArray.sort((a, b) => (b.lastDate || 0) - (a.lastDate || 0));
   }, [contactList]);
 
-  // 🧠 5. Memoize the filtering logic
+  // 5. Memoize the filtering logic
   const filteredContacts = useMemo(() => {
     if (!search) {
       return sortedContactArray;
@@ -190,8 +190,6 @@ const OwnChat = ({ navigation }) => {
     },
     [navigation],
   );
-
-  // ⚙️ 6. Stabilize renderItem with useCallback
   const renderChatItem = useCallback(
     ({ item, index }) => (
       <ChatItem item={item} index={index} onPress={navigateToChat} />
@@ -203,20 +201,10 @@ const OwnChat = ({ navigation }) => {
     try {
       const allKeys = await AsyncStorage.getAllKeys();
       console.log('All AsyncStorage Keys:', allKeys);
-
-      // for (const key of allKeys) {
-      //   const value = await AsyncStorage.getItem(key);
-      //   console.log(`Key: ${key}, Value: ${value}`);
-      // }
-
-      //  const allcontact=  await AsyncStorage.getItem('@device_contacts');
-      //   console.log("All Contacts from AsyncStorage:", allcontact);
     } catch (error) {
       console.error('Error retrieving AsyncStorage data:', error);
     }
   };
-
-  // Call this function in your component's lifecycle or a button press
   useEffect(() => {
     checkAsyncStorage();
   }, []);

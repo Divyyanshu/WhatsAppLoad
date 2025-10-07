@@ -15,6 +15,7 @@ import ChatScreen from './src/Screens/ChatScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TemplateListScreen from './src/Screens/TemplateListScreen';
 import { UserContext, UserProvider } from './src/Context/UserContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
  
 function LoadingScreen() {
@@ -66,6 +67,8 @@ function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
   return (
+    // <SafeAreaView>
+    <SafeAreaView style={{ flex: 1 }}>
     <UserProvider>
     <View style={styles.container}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
@@ -74,6 +77,7 @@ function App() {
       <RootNavigator />
     </View>
     </UserProvider>
+    </SafeAreaView>
   );
 }
 

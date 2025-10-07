@@ -17,8 +17,7 @@ const TopBar = ({ title = 'Own Chats', onLogoutPress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 30,
-    paddingVertical:10
+    paddingVertical: 10,
   },
   headerRow: {
     flexDirection: 'row',
