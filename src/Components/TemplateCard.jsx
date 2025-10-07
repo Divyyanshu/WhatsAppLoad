@@ -39,117 +39,6 @@ const TemplateCard = ({ template, recipientNumber }) => {
     setFinalMessage(null);
   }, [Template]);
 
-  // --- API CALL LOGIC for send message ---const sendMessageApi = async ({ to, messageContent, fullTemplate })
-  // const sendMessageApi = async ({ to, TemplateName,  messageContent, fullTemplate}) => {
-  //   setLoading(true);
-  //   console.log('fullTemplate in API call:', fullTemplate); 
-  //   console.log('messageContent in API call:', messageContent);
-
-  //   try {
-  //     // Step 1: Opt-in
-  //     const optinUrl = `https://vapi.instaalerts.zone/optin?action=optin&pin=${user.WhatsAppBearer}&optinid=${user.WhatsAppSenderID}&mobile=${to}`;
-  //     const optinRes = await fetch(optinUrl, { method: 'POST' });
-  //     console.log(optinRes);
-  //     if (!optinRes.ok) throw new Error('Opt-in failed');
-
-  //     // Step 2: Send Message
-  //     const bearerToken = user.WhatsAppBearer; // from context- 'Ze2uKXpEGT3phoZKEVjaiQ=='
-  //     console.log('bearerToken:', bearerToken);
-
-  //     // Build parameterValues if variables exist
-  //     let parameterValues = undefined;
-  //     if (variableCount > 0 && variableValues.length > 0) {
-  //       parameterValues = {};
-  //       variableValues.forEach((val, idx) => {
-  //         parameterValues[idx] = val;
-  //       });
-  //     }
-  // /* for Image Template-  
-  //      "content":{
-  //      "type": "MEDIA_TEMPLATE",
-  //      }
-
-  // */
-
-
-  //     const payload = {
-  //       "message": {
-  //         "channel": "WABA",
-  //         "content": {
-  //           "preview_url": false,
-  //           "type": "TEMPLATE",
-  //           "template": {
-  //             "templateId": TemplateName,
-  //             ...(parameterValues ? { parameterValues } : {})
-  //           },
-  //         },
-  //         "recipient": {
-  //           "to": to,
-  //           "recipient_type": "individual",
-  //           "reference": {
-  //             "cust_ref": "Some Customer Ref",
-  //             "messageTag1": "Message Tag Val1",
-  //             "conversationId": "Some Optional Conversation ID"
-  //           }
-  //         },
-  //         "sender": {
-  //           "from": user.WhatsAppSenderID
-  //         },
-  //         "preferences": {
-  //           "webHookDNId": "1001"
-  //         }
-  //       },
-  //       "metaData": {
-  //         "version": "v1.0.9"
-  //       }
-  //     };
-
-  //     console.log('Sending payload:', JSON.stringify(payload, null, 2)); // to check payload
-  //   //  sending template msg to user on whatsapp
-  //     const sendRes = await fetch('https://rcmapi.instaalerts.zone/services/rcm/sendMessage', {
-  //       method: 'POST',
-  //       headers: {
-  //         'Authentication': `Bearer ${bearerToken}`,
-  //         'Content-Type': 'application/json',
-  //       },
-  //       body: JSON.stringify(payload),
-  //     });
-  //     console.log(sendRes);
-
-  //     if (!sendRes.ok) throw new Error('Send message failed');
-  //     const result = await sendRes.json();
-  //     // alert('Message Sent!');
-  //     console.log('API result:', result);
-  //     // API result: {statusCode: '200', statusDesc: 'Successfully Accepted', mid: '410123751001143816805212'}mid: "410123751001143816805212"statusCode: "200"statusDesc: "Successfully Accepted"[[Prototype]]: Object
-
-  //     // Step 3: Save sent message details to server
-  //     if (result) {
-  //        console.log('Message sent successfully, now saving details to server...');
-  //       // 👇 MODIFIED: Prepare the details object with ALL parameters
-  //       const messageDetailsToSave = {
-  //         sender: user.WhatsAppSenderID,
-  //         logId: user.LoginID ,
-  //         receiver: to,
-  //         templateContent: messageContent,
-  //         mid: result.mid,
-  //         serviceType: fullTemplate.ServiceType,
-  //         imagePath: fullTemplate.ImagePath,    
-  //       };
-
-  //       // Call the save function with the complete details
-  //       saveSentMessage(messageDetailsToSave);
-
-  //     } else {
-  //       throw new Error('Message sent, but received an invalid response.');
-  //     }
-
-  //   } catch (err) {
-  //     // Alert.alert('Error: ' + err.message);
-  //     console.error(err);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
   const sendMessageApi = async ({ to, TemplateName, messageContent, fullTemplate }) => {
     setLoading(true);
     console.log('Sending template type:', fullTemplate.TemplateType);
@@ -164,13 +53,11 @@ const TemplateCard = ({ template, recipientNumber }) => {
       const bearerToken = user.WhatsAppBearer;
         let mediaType = 'text';  
         let msg_type = 'TEXT';
-
-      // Build the parameter values object, common for all templates.
       let parameterValues;
       if (variableCount > 0 && variableValues.length > 0) {
         parameterValues = {};
         variableValues.forEach((val, idx) => {
-          parameterValues[idx] = val || ''; // Use an empty string if a value is missing
+          parameterValues[idx] = val || ''; 
         });
       }
 
@@ -180,7 +67,7 @@ const TemplateCard = ({ template, recipientNumber }) => {
 
       if (isMediaTemplate) {
         msg_type = 'ATTACHMENT';
-        if (fullTemplate.TemplateType === 'Image Template') mediaType = 'image';
+        if (fullTemplate.TemplateType === 'Image Template') mediaType = 'image';
         if (fullTemplate.TemplateType === 'Video Template') mediaType = 'video';
         if (fullTemplate.TemplateType === 'Document Template') mediaType = 'document';
 
@@ -262,8 +149,8 @@ const TemplateCard = ({ template, recipientNumber }) => {
           mid: result.mid,
           serviceType: fullTemplate.ServiceType,
           imagePath: fullTemplate.ImagePath,
-          attachmentName: mediaType,  // image, video, document, text
-          messageType : msg_type,   // ATTACHMENT or TEXT
+          attachmentName: mediaType,
+          messageType : msg_type,
         };
         console.log('Prepared message details for saving:', messageDetailsToSave);
         
@@ -311,27 +198,12 @@ const TemplateCard = ({ template, recipientNumber }) => {
 
   //  Final "Send" button is clicked
   const handleFinalSend = () => {
-    // Use the finalMessage if it exists, otherwise use the original template
     const messageToSend = finalMessage || Template;
 
     const to = recipientNumber;
     sendMessageApi({ to, TemplateName, messageContent: messageToSend, fullTemplate: template });
 
   };
-  // 👇 MODIFIED: handleFinalSend now passes the entire `template` object
-  // const handleFinalSend = () => {
-  //   const messageToSend = finalMessage || Template;
-  //   const to = recipientNumber;
-
-  //   // Pass the final message text and the full template object to the API function
-  //   sendMessageApi({ 
-  //     to, 
-  //     messageContent: messageToSend, 
-  //     fullTemplate: template // Pass the whole template prop here
-  //   });
-  // };
-
-
   return (
     <View style={styles.card}>
       {loading && (
@@ -384,23 +256,6 @@ const TemplateCard = ({ template, recipientNumber }) => {
               sourceUrl={ImagePath}
               // authToken={yourAuthToken}
             />
-            {/* <Pdf
-                    source={{uri: ImagePath,cache:true}}
-                    onLoadProgress={(percent)=>{console.log(`Loading: ${percent}%`)}}
-                    // onLoadComplete={(numberOfPages,filePath) => {
-                    onLoadComplete={(numberOfPages,filePath) => {
-                        console.log(`Number of pages: ${numberOfPages}`);
-                    }}
-                    onPageChanged={(page,numberOfPages) => {
-                        console.log(`Current page: ${page}`);
-                    }}
-                    onError={(error) => {
-                        console.log(error);
-                    }}
-                    onPressLink={(uri) => {
-                        console.log(`Link pressed: ${uri}`);
-                    }}
-                    style={styles.pdf}/> */}
             </View>
           )}
            
@@ -426,7 +281,7 @@ const TemplateCard = ({ template, recipientNumber }) => {
         <View style={styles.buttonRow}>
           {variableCount > 0 && (
             <TouchableOpacity
-              onPress={() => setIsModalVisible(true)} // Step 2: Open modal
+              onPress={() => setIsModalVisible(true)}
               style={[styles.button, styles.secondaryButton]}>
               <Text style={styles.secondaryButtonText}>{finalMessage ? 'Edit Variables' : 'Set Variables'}</Text>
             </TouchableOpacity>
@@ -435,7 +290,6 @@ const TemplateCard = ({ template, recipientNumber }) => {
           <TouchableOpacity
             onPress={handleFinalSend}
             style={[styles.button, styles.primaryButton]}
-            // Disable send button if variables are required but not yet set
             disabled={variableCount > 0 && !finalMessage}>
             <Text style={styles.primaryButtonText}>Send</Text>
           </TouchableOpacity>

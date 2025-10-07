@@ -76,8 +76,7 @@ const styles = StyleSheet.create({
     // backgroundColor: 'red',
     fontSize: 14,
     color: '#111827',
-    textAlign: 'start', // Center the input text
-    // textAlignVertical: 'center', // Center the input text vertically
+    textAlign: 'start',
     zIndex: 99,
    
   },
