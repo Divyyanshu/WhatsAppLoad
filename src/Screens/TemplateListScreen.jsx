@@ -9,17 +9,22 @@ import {
   Appearance,
   TextInput,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import TemplateCard from '../Components/TemplateCard';
 import { UserContext } from '../Context/UserContext';
 import { COLORS } from '../Constants/Colors';
 import { API_URL } from '../config';
+import { useNavigation } from '@react-navigation/native';
+import Feather from 'react-native-vector-icons/Feather';
+import WhatsAppLoaders from '../Components/WhatsAppLoaders';
 
 const colorScheme = Appearance.getColorScheme();
 const theme = colorScheme === 'dark' ? COLORS.dark : COLORS.light;
 let templateCache = null;
 
 const TemplateListScreen = ({ route }) => {
+  const navigation = useNavigation();
   const [templates, setTemplates] = useState([]);
   const [filteredTemplates, setFilteredTemplates] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,8 +127,7 @@ const TemplateListScreen = ({ route }) => {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={{ color: theme.text }}>Loading Templates...</Text>
+        <WhatsAppLoaders type="bar" color={COLORS.loader} />
       </View>
     );
   }
@@ -138,24 +142,16 @@ const TemplateListScreen = ({ route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View
-        style={{
-          backgroundColor: theme.primary,
-          padding: 10,
-          borderBottomWidth: 1,
-          borderColor: '#ccc',
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 16,
-            textAlign: 'center',
-            marginVertical: 6,
-            color: '#fff',
-          }}
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
         >
-          Approved Template List
-        </Text>
+          <Feather name="arrow-left" size={30} color="#fff" />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>Approved Template List</Text>
       </View>
 
       {/* Search Input Field */}
@@ -169,6 +165,7 @@ const TemplateListScreen = ({ route }) => {
         />
       </View>
 
+      {/* FlatList */}
       {filteredTemplates.length > 0 ? (
         <FlatList
           data={filteredTemplates}
@@ -202,6 +199,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  header: {
+    backgroundColor: theme.primary,
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderColor: '#ccc',
+  },
+
+  headerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+  },
+
+  backButton: {
+    position: 'absolute',
+    left: 10,
+    padding: 5,
+    zIndex: 1,
   },
   searchContainer: {
     padding: 10,

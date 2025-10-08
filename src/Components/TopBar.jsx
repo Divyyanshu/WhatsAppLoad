@@ -29,9 +29,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ccc',
   },
   header: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#000',
+    letterSpacing: 0.8,
   },
   logoutIcon: {
     padding: 5,

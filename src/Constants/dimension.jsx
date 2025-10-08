@@ -76,6 +76,12 @@ export const CommonFonts = {
   font26: rawFont(26),
   font28: rawFont(28),
   font30: rawFont(30),
+  font32: rawFont(32),
+  font34: rawFont(34),
+  font36: rawFont(36),
+  font38: rawFont(38),
+  font40: rawFont(40),
+  font50: rawFont(50),
 };
 
 export { rawWidth, rawHeight, rawFont };

@@ -1,33 +1,40 @@
-// FloatingLabelInput.js
 import React, { useState, useRef, useEffect } from 'react';
-import { View, TextInput, Animated, StyleSheet, Easing, Appearance } from 'react-native';
+import {
+  View,
+  TextInput,
+  Animated,
+  StyleSheet,
+  Easing,
+  Appearance,
+} from 'react-native';
 import { COLORS } from '../Constants/Colors';
-
+import { rawHeight, rawWidth } from '../Constants/dimension';
 
 const FloatingLabelInput = ({ label, ...props }) => {
   const [isFocused, setIsFocused] = useState(false);
-  const animatedIsFocused = useRef(new Animated.Value(props.value === '' ? 0 : 1)).current;
+  const animatedIsFocused = useRef(
+    new Animated.Value(props.value ? 1 : 0),
+  ).current;
+
   const colorScheme = Appearance.getColorScheme();
   const theme = colorScheme === 'dark' ? COLORS.dark : COLORS.light;
-  // console.log(colorScheme);
 
   useEffect(() => {
     Animated.timing(animatedIsFocused, {
       toValue: isFocused || props.value !== '' ? 1 : 0,
-      duration: 200,
-      easing: Easing.bezier(0.4, 0, 0.2, 1),
-      useNativeDriver: false, // color and fontSize are not supported with native driver
+      duration: 250,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: false,
     }).start();
   }, [isFocused, props.value]);
 
-  // Styles for the label when focused and unfocused
+  // Label style
   const labelStyle = {
     position: 'absolute',
     left: 16,
-    bottom: 6,
     top: animatedIsFocused.interpolate({
       inputRange: [0, 1],
-      outputRange: [18, -10],
+      outputRange: [18, -6],
     }),
     fontSize: animatedIsFocused.interpolate({
       inputRange: [0, 1],
@@ -42,19 +49,23 @@ const FloatingLabelInput = ({ label, ...props }) => {
     zIndex: 1,
   };
 
+  // Container style with subtle shadow on focus
   const containerStyle = [
     styles.container,
-    { borderColor: isFocused ? theme.primary : theme.border },
+    {
+      borderColor: isFocused ? theme.primary : theme.border,
+      shadowOpacity: isFocused ? 0.12 : 0,
+    },
   ];
 
   return (
     <View style={containerStyle}>
-      <Animated.Text style={labelStyle}>
-        {label}
-      </Animated.Text>
+      <Animated.Text style={labelStyle}>{label}</Animated.Text>
       <TextInput
         {...props}
-        style={styles.input}
+        style={[styles.input, { color: theme.black }]}
+        placeholder=""
+        placeholderTextColor={theme.label}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
       />
@@ -65,20 +76,21 @@ const FloatingLabelInput = ({ label, ...props }) => {
 const styles = StyleSheet.create({
   container: {
     borderWidth: 1,
-    borderRadius: 4,
-    // paddingTop: 4,
+    borderRadius: 8,
     width: '100%',
-    height: 55,
+    height: rawHeight(55),
     justifyContent: 'center',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 2,
   },
   input: {
-    paddingHorizontal: 20,
-    // backgroundColor: 'red',
+    paddingHorizontal: 16,
     fontSize: 14,
-    color: '#111827',
-    textAlign: 'start',
+    height: '100%',
     zIndex: 99,
-   
   },
 });
 

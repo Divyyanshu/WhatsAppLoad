@@ -1827,7 +1827,7 @@ PODS:
     - Yoga
   - react-native-vector-icons-evil-icons (12.3.0)
   - react-native-vector-icons-fontawesome6 (12.2.0)
-  - react-native-video (6.16.1):
+  - react-native-video (6.17.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -1846,7 +1846,7 @@ PODS:
     - React-hermes
     - React-ImageManager
     - React-jsi
-    - react-native-video/Video (= 6.16.1)
+    - react-native-video/Video (= 6.17.0)
     - React-NativeModulesApple
     - React-RCTFabric
     - React-renderercss
@@ -1857,7 +1857,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-video/Fabric (6.16.1):
+  - react-native-video/Fabric (6.17.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -1886,7 +1886,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - react-native-video/Video (6.16.1):
+  - react-native-video/Video (6.17.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2984,7 +2984,7 @@ SPEC CHECKSUMS:
   react-native-safe-area-context: 8ed800930eb7d0b6651218f69656e823d37b6ef7
   react-native-vector-icons-evil-icons: 74d1fe2b104d1b4286359313713c7a4a9dcef1be
   react-native-vector-icons-fontawesome6: 1b667969bef2f430d1d7515163b980b856f58670
-  react-native-video: ad705a78b4873d4e591e0419e617ce6b294b51f2
+  react-native-video: 0ec8bed8b2e4b3fb72237959a6a19bda4af5f4b3
   react-native-webview: 38b7d49cbe748b6fa02381be0a097d3922caf94a
   React-NativeModulesApple: 37c08c3c54db55854de816b0df0f3683832be35a
   React-oscompat: 56d6de59f9ae95cd006a1c40be2cde83bc06a4e1

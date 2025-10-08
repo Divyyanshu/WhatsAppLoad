@@ -1,4 +1,3 @@
-// LoginScreen.js
 import React, { useState, useEffect, useContext } from 'react';
 import {
   SafeAreaView,
@@ -7,27 +6,28 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  Appearance,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
-import { SvgUri } from 'react-native-svg';
-import Feather from 'react-native-vector-icons/Feather'; // Using Feather icons
+import Feather from 'react-native-vector-icons/Feather';
 import FloatingLabelInput from '../Components/FloatingLabelInput.jsx';
 import ToastMessage from '../Components/ToastMessage.jsx';
-
 import { useNavigation } from '@react-navigation/native';
-import { LoginPhoto } from '../Assets/index.js';
 import { COLORS } from '../Constants/Colors.jsx';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserContext } from '../Context/UserContext.js';
 import { API_URL } from '../config.js';
-
-const colorScheme = Appearance.getColorScheme();
-const theme = colorScheme === 'dark' ? COLORS.dark : COLORS.light;
+import {
+  CommonFonts,
+  CommonHeights,
+  CommonWidths,
+  rawWidth,
+  rawHeight,
+} from '../Constants/dimension';
+import Footer from '../Components/Footer.jsx';
 
 const LoginScreen = () => {
   const [username, setUsername] = useState('trial');
@@ -35,33 +35,13 @@ const LoginScreen = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: '' });
+  const [loading, setLoading] = useState(false);
+
+  const navigation = useNavigation();
+  const { setUser } = useContext(UserContext);
 
   const showToast = msg => setToast({ visible: true, message: msg });
   const hideToast = () => setToast({ visible: false, message: '' });
-
-  const navigation = useNavigation();
-
-  const { setUser, setAuthenticated } = useContext(UserContext);
-
-  const checkAsyncStorage = async () => {
-    try {
-      const allKeys = await AsyncStorage.getAllKeys();
-      console.log('All AsyncStorage Keys:', allKeys);
-
-      // for (const key of allKeys) {
-      //   const value = await AsyncStorage.getItem(key);
-      //   console.log(`Key: ${key}, Value: ${value}`);
-      // }
-    } catch (error) {
-      console.error('Error retrieving AsyncStorage data:', error);
-    }
-  };
-
-  // Call this function in your component's lifecycle or a button press
-  // For example, in a useEffect hook:
-  useEffect(() => {
-    checkAsyncStorage();
-  }, []);
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () =>
@@ -76,17 +56,11 @@ const LoginScreen = () => {
     };
   }, []);
 
-  //  function to handle login
   const handleLogin = async () => {
-    if (!username) {
-      showToast('Please enter username');
-      return;
-    } else {
-      if (!password) {
-        showToast('Please enter password');
-        return;
-      }
-    }
+    if (!username) return showToast('Please enter username');
+    if (!password) return showToast('Please enter password');
+
+    setLoading(true);
 
     try {
       const response = await fetch(
@@ -95,29 +69,20 @@ const LoginScreen = () => {
         )}&Password=${encodeURIComponent(password)}`,
         { method: 'POST' },
       );
-      console.log('Login response status:', response, response.status);
-
       const result = await response.json();
-      if (
-        result.Message === 'Success' &&
-        result.Data &&
-        result.Data.length > 0
-      ) {
-        // Store user data in AsyncStorage
-        const userData = result.Data[0];
 
+      if (result.Message === 'Success' && result.Data?.length > 0) {
+        const userData = result.Data[0];
         await AsyncStorage.setItem('user', JSON.stringify(userData));
-        // console.log('Login successful:', result.Data[0])
-        const userFromLocal = await AsyncStorage.getItem('user');
-        console.log('User from local storage:', JSON.parse(userFromLocal));
-        setUser(userData); //context update
-        // setAuthenticated(true);
+        setUser(userData);
         navigation.replace('OwnChat', { username, userData });
       } else {
         showToast(result.Data || 'Invalid credentials');
       }
     } catch (error) {
       showToast('Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -130,19 +95,21 @@ const LoginScreen = () => {
       >
         <View style={styles.container}>
           <View style={styles.card}>
-            {/* ...existing code... */}
             <View style={styles.illustrationContainer}>
               <Image
-                source={LoginPhoto}
-                style={{ width: '70%', height: '100%' }}
+                source={require('../Assets/images/logoLogin.png')}
+                style={styles.illustration}
+                resizeMode="contain"
               />
             </View>
+
             <View style={styles.form}>
               <FloatingLabelInput
                 label="Username"
                 value={username}
                 onChangeText={setUsername}
               />
+
               <View style={styles.passwordContainer}>
                 <FloatingLabelInput
                   label="Password"
@@ -161,9 +128,19 @@ const LoginScreen = () => {
                   />
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.button} onPress={handleLogin}>
-                <Text style={styles.buttonText}>Sign In</Text>
+
+              <TouchableOpacity
+                style={[styles.button, loading && { opacity: 0.8 }]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Sign In</Text>
+                )}
               </TouchableOpacity>
+
               <ToastMessage
                 message={toast.message}
                 visible={toast.visible}
@@ -171,13 +148,8 @@ const LoginScreen = () => {
                 duration={600}
               />
             </View>
-            {!keyboardVisible && (
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                  Powered by <Text style={styles.boldText}>Load Infotech</Text>
-                </Text>
-              </View>
-            )}
+
+            {!keyboardVisible && <Footer companyName="Load Infotech" />}
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -188,7 +160,7 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f9fafb', // bg-gray-50
+    backgroundColor: '#f9fafb',
   },
   container: {
     flex: 1,
@@ -198,69 +170,73 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: 'white',
-    padding: 32, // p-8
-    width: '100%',
+    padding: CommonWidths.width20,
+    width: '90%',
     maxWidth: 400,
-    height: '100%',
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 6,
   },
   illustrationContainer: {
     alignItems: 'center',
-    marginBottom: 32, // mb-8
-    height: 200, // Adjusted for mobile
+    marginBottom: CommonHeights.height24,
+    height: rawHeight(180),
+  },
+  illustration: {
+    width: rawWidth(160),
+    height: rawHeight(160),
   },
   form: {
     width: '100%',
-    // height: '60%', // Adjusted for
   },
   passwordContainer: {
-    marginTop: 32, // space-y-8
+    marginTop: CommonHeights.height16,
     position: 'relative',
     width: '100%',
   },
   eyeIcon: {
     position: 'absolute',
-    right: 16,
+    right: 12,
     top: 0,
     bottom: 0,
     justifyContent: 'center',
   },
   button: {
-    marginTop: 32, // space-y-8
+    marginTop: CommonHeights.height24,
     width: '100%',
-    backgroundColor: theme.primary,
-    paddingVertical: 14,
-    borderRadius: 8, // rounded-lg
+    backgroundColor: COLORS.light.primary,
+    paddingVertical: CommonHeights.height14,
+    borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   buttonText: {
     color: 'white',
-    fontSize: 16,
-    fontWeight: '600', // font-semibold
+    fontSize: CommonFonts.font16,
+    fontWeight: '600',
   },
   footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 30,
+    marginTop: CommonHeights.height20,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 16,
-    // backgroundColor: 'transparent',
   },
   footerText: {
-    color: '#9ca3af', // text-gray-400
+    color: '#9ca3af',
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: CommonFonts.font14,
   },
   boldText: {
-    fontWeight: '800',
-    color: '#6b7280', // text-gray-500
-    fontSize: 20,
+    fontWeight: '700',
+    color: '#6b7280',
+    fontSize: CommonFonts.font16,
   },
 });
 
