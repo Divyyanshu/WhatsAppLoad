@@ -1,435 +1,3 @@
-// import React, { useContext, useEffect, useRef, useState } from 'react';
-// import {
-//   View,
-//   Text,
-//   FlatList,
-//   StyleSheet,
-//   TextInput,
-//   Image,
-//   SectionList,
-//   TouchableOpacity,
-//   Linking,
-// } from 'react-native';
-// import { COLORS } from '../Constants/Colors';
-
-// import Feather from 'react-native-vector-icons/Feather'; // Using Feather icons
-// import FontAwesome6 from 'react-native-vector-icons/FontAwesome6'; // Using Feather icons
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-// import { useNavigation } from '@react-navigation/native';
-// import { UserContext } from '../Context/UserContext';
-// import { API_URL } from '../config';
-// import Video from 'react-native-video';
-// import AuthenticatedPdfViewer from '../Components/AuthenticatedPdfViewer';
-
-// function groupChatsByDate(chats) {
-//   const groups = {};
-//   chats.forEach(chat => {
-//     const dateObj = chat.ProcessDate ? new Date(chat.ProcessDate) : null;
-//     if (!dateObj) return;
-//     const dateLabel = dateObj.toLocaleDateString('en-IN', {
-//       day: '2-digit',
-//       month: '2-digit',
-//       year: 'numeric',
-//     });
-//     if (!groups[dateLabel]) groups[dateLabel] = [];
-//     groups[dateLabel].push(chat);
-//   });
-//   // Return as array of {date, messages}
-//   return Object.keys(groups).map(date => ({
-//     date,
-//     data: groups[date],
-//   }));
-// }
-// const renderAttachment = item => {
-//   // Use a switch statement for clarity. It's easy to add more types later.
-//   // Using .toLowerCase() makes it safer in case the API sends "Image" or "IMAGE"
-//   switch (item.Attachement_Type?.toLowerCase()) {
-//     case 'image':
-//       return (
-//         <Image
-//           source={{ uri: item.Imagepath }}
-//           style={styles.mediaImage}
-//           resizeMode="cover"
-//         />
-//       );
-
-//     case 'video':
-//       return (
-//         <Video
-//           source={{ uri: item.Imagepath }}
-//           style={styles.mediaVideo}
-//           controls={true} // Show player controls
-//           paused={true} // Don't auto-play
-//         />
-//       );
-
-//     case 'document':
-//       // For documents, it's better UX to show a tappable placeholder
-//       // than to embed a whole PDF viewer in a chat bubble.
-//       return (
-//         <TouchableOpacity
-//           style={styles.documentContainer}
-//           onPress={() => {
-//             /* Add logic to open the document here */
-//           }}
-//         >
-//           <AuthenticatedPdfViewer sourceUrl={item.Imagepath} />
-//         </TouchableOpacity>
-//       );
-
-//     default:
-//       // If the attachment type is unknown or missing, render nothing.
-//       return null;
-//   }
-// };
-
-// const ChatScreen = ({ route }) => {
-//   const { number, chats } = route.params;
-//   const [checkMessageEligibility, setCheckMessageEligibility] = useState(false);
-//   // console.log('checkMessageEligibility', checkMessageEligibility);
-//   const [message, setMessage] = useState('');
-//   const navigation = useNavigation();
-//   const sectionListRef = useRef(null);
-
-//   const { user, authenticated } = useContext(UserContext);
-//   // console.log("User from context:", user);
-
-//   // Check message eligibility  here for showing templete option or input box
-//   const checkEligibility = async () => {
-//     try {
-//       const senderNo = user.WhatsAppSenderID;
-//       // console.log('senderNo:', senderNo, number);
-//       const response = await fetch(
-//         `${API_URL}/checkLastuserMessage?senderid=${senderNo}&clientno=${number}`,
-//         { method: 'POST' },
-//       );
-//       const data = await response.json();
-//       console.log('Eligibility response:', data);
-//       if (data.Data === 'Yes') {
-//         setCheckMessageEligibility(true);
-//       } else {
-//         setCheckMessageEligibility(false);
-//       }
-//       //  setCheckMessageEligibility(data);
-//     } catch (error) {
-//       console.error('Error fetching eligibility  from API:', error);
-//     }
-//   };
-
-//   useEffect(() => {
-//     checkEligibility();
-//   }, []);
-
-//   // Scroll to bottom when chats change
-//   useEffect(() => {
-//     if (
-//       sectionListRef.current &&
-//       sections.length > 0 &&
-//       sections[sections.length - 1].data.length > 0
-//     ) {
-//       setTimeout(() => {
-//         sectionListRef.current.scrollToLocation({
-//           sectionIndex: sections.length - 1,
-//           itemIndex: sections[sections.length - 1].data.length - 1,
-//           animated: false,
-//         });
-//       }, 100);
-//     }
-//   }, [sections]);
-
-//   const safeChats = Array.isArray(chats) ? chats : [];
-//   const sections = groupChatsByDate(safeChats);
-
-//   console.log('ChatScreen received chats:', number, sections);
-
-//   const handleSend = () => {
-//     // Implement send logic here
-//     setMessage('');
-//   };
-
-//   return (
-//     <View style={styles.container}>
-//       <View style={styles.header}>
-//         <View style={styles.avatar}>
-//           <Text style={styles.avatarText}>A</Text>
-//         </View>
-//         <View>
-//           <Text style={styles.headerText}>{number}</Text>
-//         </View>
-//       </View>
-
-//       <SectionList
-//         ref={sectionListRef}
-//         sections={sections}
-//         keyExtractor={item => item.id}
-//         renderSectionHeader={({ section: { date } }) => (
-//           <View style={styles.dateSection}>
-//             <Text style={styles.dateSectionText}>{date}</Text>
-//           </View>
-//         )}
-//         renderItem={({ item }) => {
-//           const isSent = item.Mode === 'Send';
-//           const isAttachment = item.MessageType === 'ATTACHMENT';
-//           const read = item.readstatus === 'read';
-//           const formattedTime = item.ProcessDate
-//             ? new Date(item.ProcessDate).toLocaleTimeString('en-IN', {
-//                 hour: '2-digit',
-//                 minute: '2-digit',
-//               })
-//             : '';
-//           return (
-//             <View
-//               style={[
-//                 styles.messageContainer,
-//                 isSent ? styles.sent : styles.received,
-//               ]}
-//             >
-//               {isAttachment ? (
-//                 <View>
-//                   {/* Call the helper function to render the correct media type */}
-//                   {renderAttachment(item)}
-
-//                   {/* Display the caption and message text below the attachment */}
-//                   {item.Attachement_Caption ? (
-//                     <Text style={[styles.messageText, { marginTop: 8 }]}>
-//                       {item.Attachement_Caption}
-//                     </Text>
-//                   ) : null}
-
-//                   {/* Don't show MessageText if it's the same as the caption */}
-//                   {item.MessageText !== item.Attachement_Caption && (
-//                     <Text style={styles.messageText}>{item.MessageText}</Text>
-//                   )}
-//                 </View>
-//               ) : (
-//                 <Text style={styles.messageText}>{item.MessageText}</Text>
-//               )}
-
-//               <View
-//                 style={{
-//                   flexDirection: 'row',
-//                   alignItems: 'center',
-//                   justifyContent: 'flex-end',
-//                 }}
-//               >
-//                 <Text style={styles.messageTime}>{formattedTime}</Text>
-//                 {isSent &&
-//                   (read ? (
-//                     <FontAwesome6
-//                       name="check-double"
-//                       size={16}
-//                       color={COLORS.light.primary}
-//                       style={{ marginLeft: 4 }}
-//                     />
-//                   ) : (
-//                     <FontAwesome6
-//                       name="check"
-//                       size={16}
-//                       color="gray"
-//                       style={{ marginLeft: 4 }}
-//                     />
-//                   ))}
-//               </View>
-//             </View>
-//           );
-//         }}
-//         contentContainerStyle={{ padding: 10 }}
-//         onContentSizeChange={() => {
-//           if (
-//             sectionListRef.current &&
-//             sections.length > 0 &&
-//             sections[sections.length - 1].data.length > 0
-//           ) {
-//             sectionListRef.current.scrollToLocation({
-//               sectionIndex: sections.length - 1,
-//               itemIndex: sections[sections.length - 1].data.length - 1,
-//               animated: false,
-//             });
-//           }
-//         }}
-//         onScrollToIndexFailed={info => {
-//           // Scroll to the end as a fallback
-//           setTimeout(() => {
-//             if (sectionListRef.current) {
-//               sectionListRef.current.scrollToEnd?.({ animated: false });
-//             }
-//           }, 100);
-//         }}
-//       />
-
-//       {checkMessageEligibility ? (
-//         <View style={styles.inputContainer}>
-//           <TextInput
-//             style={styles.input}
-//             placeholder="Message"
-//             value={message}
-//             onChangeText={setMessage}
-//           />
-//           <TouchableOpacity onPress={handleSend}>
-//             <Feather
-//               name="send"
-//               size={24}
-//               color={COLORS.light.primary}
-//               style={{ marginLeft: 10 }}
-//             />
-//           </TouchableOpacity>
-//         </View>
-//       ) : (
-//         <View style={styles.inputContainer}>
-//           <TouchableOpacity
-//             style={styles.templateButton}
-//             onPress={() => navigation.navigate('Templates', { number })}
-//           >
-//             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-//               <Feather
-//                 name="file-text"
-//                 size={20}
-//                 color="#000"
-//                 style={{ marginRight: 8 }}
-//               />
-//               <Text style={styles.templateButtonText}>See Template List</Text>
-//             </View>
-//           </TouchableOpacity>
-//         </View>
-//       )}
-//     </View>
-//   );
-// };
-
-// const styles = StyleSheet.create({
-//   container: {
-//     flex: 1,
-//     backgroundColor: '#f5f5f5',
-//   },
-//   header: {
-//     backgroundColor: COLORS.light.primary,
-//     padding: 16,
-//     alignItems: 'center',
-//     flexDirection: 'row',
-//   },
-//   headerText: {
-//     color: '#fff',
-//     fontSize: 18,
-//     fontWeight: 'bold',
-//   },
-//   avatar: {
-//     width: 40,
-//     height: 40,
-//     borderRadius: 20,
-//     backgroundColor: '#e0e0e0',
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//     marginRight: 12,
-//   },
-//   avatarText: {
-//     fontSize: 18,
-//     color: '#333',
-//     fontWeight: 'bold',
-//   },
-//   messageContainer: {
-//     marginVertical: 6,
-//     maxWidth: '80%',
-//     borderRadius: 10,
-//     padding: 10,
-//   },
-//   sent: {
-//     backgroundColor: '#d1f7c4',
-//     alignSelf: 'flex-end',
-//   },
-//   received: {
-//     backgroundColor: '#fff',
-//     alignSelf: 'flex-start',
-//   },
-//   messageText: {
-//     fontSize: 16,
-//     color: '#333',
-//   },
-//   messageTime: {
-//     fontSize: 12,
-//     color: '#888',
-//     alignSelf: 'flex-end',
-//   },
-//   inputContainer: {
-//     flexDirection: 'row',
-//     justifyContent: 'space-between',
-//     padding: 4,
-//     backgroundColor: '#fff',
-//     borderTopWidth: 1,
-//     borderColor: '#eee',
-//   },
-//   input: {
-//     flex: 1,
-//     height: 40,
-//     borderRadius: 20,
-//     backgroundColor: '#f2f2f2',
-//     paddingHorizontal: 16,
-//     fontSize: 16,
-//   },
-//   attachmentLabel: {
-//     fontSize: 13,
-//     color: '#b3a0e0',
-//     marginBottom: 2,
-//     fontWeight: 'bold',
-//   },
-//   dateSection: {
-//     alignSelf: 'center',
-//     backgroundColor: '#005A9C',
-//     borderRadius: 10,
-//     paddingHorizontal: 12,
-//     paddingVertical: 4,
-//     marginVertical: 8,
-//   },
-//   dateSectionText: {
-//     fontSize: 13,
-//     color: '#fff',
-//     fontWeight: 'bold',
-//   },
-//   templateButton: {
-//     flex: 1,
-//     backgroundColor: '#fff',
-//     borderRadius: 20,
-//     padding: 12,
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//   },
-//   templateButtonText: {
-//     color: '#000',
-//     fontSize: 16,
-//     fontWeight: 'bold',
-//   },
-//   mediaImage: {
-//     width: 250,
-//     height: 250,
-//     borderRadius: 10,
-//     marginBottom: 4,
-//   },
-//   mediaVideo: {
-//     width: 250,
-//     height: 180, // Videos are often wider
-//     borderRadius: 10,
-//     marginBottom: 4,
-//     backgroundColor: '#000', // Good practice for video player background
-//   },
-//   documentContainer: {
-//     width: 250,
-//     padding: 15,
-//     backgroundColor: '#F0F4F8',
-//     borderRadius: 10,
-//     flexDirection: 'row',
-//     alignItems: 'center',
-//     borderWidth: 1,
-//     borderColor: '#E1E8EE',
-//   },
-//   documentText: {
-//     marginLeft: 10,
-//     fontSize: 15,
-//     fontWeight: '500',
-//     color: '#000',
-//     flexShrink: 1,
-//   },
-// });
-
-// export default ChatScreen;
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -437,8 +5,8 @@ import {
   SectionList,
   TextInput,
   TouchableOpacity,
-  Image,
   StyleSheet,
+  Modal,
 } from 'react-native';
 import { COLORS } from '../Constants/Colors';
 import Feather from 'react-native-vector-icons/Feather';
@@ -472,6 +40,7 @@ const ChatScreen = ({ route }) => {
   const [checkMessageEligibility, setCheckMessageEligibility] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
   const navigation = useNavigation();
   const sectionListRef = useRef(null);
 
@@ -490,7 +59,7 @@ const ChatScreen = ({ route }) => {
       if (data.Data === 'Yes') setCheckMessageEligibility(true);
       else setCheckMessageEligibility(false);
     } catch (error) {
-      console.error(error);
+      console.error('Eligibility check failed:', error);
     } finally {
       setLoading(false);
     }
@@ -503,7 +72,22 @@ const ChatScreen = ({ route }) => {
   const safeChats = Array.isArray(chats) ? chats : [];
   const sections = groupChatsByDate(safeChats);
 
-  const handleSend = () => setMessage('');
+  const handleSend = () => {
+    if (message.trim()) {
+      setMessage('');
+    }
+  };
+
+  const handleInputPress = () => {
+    if (!checkMessageEligibility) {
+      setModalVisible(true);
+    }
+  };
+
+  const handleModalOk = () => {
+    setModalVisible(false);
+    navigation.navigate('Templates', { number });
+  };
 
   // Show loader while fetching eligibility
   if (loading) {
@@ -582,40 +166,70 @@ const ChatScreen = ({ route }) => {
         contentContainerStyle={{ padding: 10 }}
       />
 
-      {/* Input / Template */}
-      {checkMessageEligibility ? (
-        <View style={styles.inputContainer}>
+      {/* Input Section */}
+      <View style={styles.inputContainerTextMessage}>
+        {checkMessageEligibility ? (
           <TextInput
             style={styles.input}
-            placeholder="Message"
+            placeholder="Type a message..."
             value={message}
             onChangeText={setMessage}
+            multiline={true}
+            placeholderTextColor="#888"
           />
-          <TouchableOpacity onPress={handleSend}>
-            <Feather
-              name="send"
-              size={24}
-              color={COLORS.light.primary}
-              style={{ marginLeft: 10 }}
+        ) : (
+          <TouchableOpacity
+            style={styles.inputWrapper}
+            onPress={handleInputPress}
+            activeOpacity={0.7}
+          >
+            <TextInput
+              style={[styles.input, styles.disabledInput]}
+              placeholder="Type a message..."
+              value={message}
+              onChangeText={setMessage}
+              multiline={true}
+              placeholderTextColor="#888"
+              editable={false}
             />
           </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.inputContainer}>
+        )}
+        {checkMessageEligibility && (
           <TouchableOpacity
-            style={styles.templateButton}
-            onPress={() => navigation.navigate('Templates', { number })}
+            style={styles.sendButton}
+            onPress={handleSend}
+            disabled={!message.trim()}
           >
             <Feather
-              name="file-text"
-              size={20}
-              color="#000"
-              style={{ marginRight: 8 }}
+              name="send"
+              size={22}
+              color={message.trim() ? '#fff' : '#ccc'}
             />
-            <Text style={styles.templateButtonText}>See Template List</Text>
           </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalText}>
+              To restart chat, send any approved message from the list.
+            </Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleModalOk}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 };
@@ -627,6 +241,11 @@ const styles = StyleSheet.create({
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
   headerText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   avatar: {
@@ -662,33 +281,50 @@ const styles = StyleSheet.create({
     color: '#888',
     alignSelf: 'flex-end',
   },
-  inputContainer: {
+  inputContainerTextMessage: {
     flexDirection: 'row',
-    padding: 4,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderColor: '#eee',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 20,
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    margin: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  inputWrapper: {
+    flex: 1,
+  },
+  sendButton: {
+    backgroundColor: COLORS.light.primary,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
   input: {
     flex: 1,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f2f2f2',
+    minHeight: 40,
+    maxHeight: 120,
     paddingHorizontal: 16,
+    paddingVertical: 8,
     fontSize: 16,
+    color: '#333',
   },
-  templateButton: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  disabledInput: {
+    backgroundColor: '#f0f0f0',
+    opacity: 0.6,
   },
-  templateButtonText: { color: '#000', fontSize: 16, fontWeight: 'bold' },
   dateSection: {
     alignSelf: 'center',
     backgroundColor: '#005A9C',
@@ -704,7 +340,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.9)',
   },
-  loaderText: { marginTop: 12, fontSize: 16, color: COLORS.light.primary },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    alignItems: 'center',
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButton: {
+    backgroundColor: COLORS.light.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 40,
+    borderRadius: 20,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
 
 export default ChatScreen;

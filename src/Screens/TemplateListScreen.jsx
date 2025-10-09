@@ -114,14 +114,12 @@ const TemplateListScreen = ({ route }) => {
       });
       setFilteredTemplates(filteredData);
     } else {
-      setFilteredTemplates(templates); // If search is cleared, show all templates
+      setFilteredTemplates(templates);
     }
   }, [searchQuery, templates]);
-
-  // Callback for the pull-to-refresh action
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchTemplates(true); // `true` forces a fetch from the API
+    fetchTemplates(true);
   }, [user]);
 
   if (loading) {
@@ -208,6 +206,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderColor: '#ccc',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
 
   headerTitle: {
