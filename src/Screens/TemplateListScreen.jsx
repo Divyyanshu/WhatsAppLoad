@@ -2,7 +2,6 @@ import React, { useState, useEffect, useContext, useCallback } from 'react';
 import {
   SafeAreaView,
   FlatList,
-  ActivityIndicator,
   Text,
   StyleSheet,
   View,

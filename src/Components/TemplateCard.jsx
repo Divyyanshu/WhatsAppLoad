@@ -19,15 +19,26 @@ import { saveSentMessage } from '../Utils/api';
 import ToastMessage from './ToastMessage';
 import AuthenticatedPdfViewer from './AuthenticatedPdfViewer.jsx';
 import Pdf from 'react-native-pdf';
+import { useNavigation } from '@react-navigation/native';
+import WhatsAppLoaders from './WhatsAppLoaders.jsx';
 
 const TemplateCard = ({ template, recipientNumber }) => {
-
-  const { Template, TemplateType, ImagePath, FileName, TemplateName, ServiceType, templateId, Category } = template;
+  const {
+    Template,
+    TemplateType,
+    ImagePath,
+    FileName,
+    TemplateName,
+    ServiceType,
+    templateId,
+    Category,
+  } = template;
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [variableCount, setVariableCount] = useState(0);
   const [variableValues, setVariableValues] = useState([]);
   const [finalMessage, setFinalMessage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const navigation = useNavigation();
 
   const { user } = useContext(UserContext);
 
@@ -39,7 +50,12 @@ const TemplateCard = ({ template, recipientNumber }) => {
     setFinalMessage(null);
   }, [Template]);
 
-  const sendMessageApi = async ({ to, TemplateName, messageContent, fullTemplate }) => {
+  const sendMessageApi = async ({
+    to,
+    TemplateName,
+    messageContent,
+    fullTemplate,
+  }) => {
     setLoading(true);
     console.log('Sending template type:', fullTemplate.TemplateType);
 
@@ -51,96 +67,105 @@ const TemplateCard = ({ template, recipientNumber }) => {
 
       // Step 2: Prepare to send the message
       const bearerToken = user.WhatsAppBearer;
-        let mediaType = 'text';  
-        let msg_type = 'TEXT';
+      let mediaType = 'text';
+      let msg_type = 'TEXT';
       let parameterValues;
       if (variableCount > 0 && variableValues.length > 0) {
         parameterValues = {};
         variableValues.forEach((val, idx) => {
-          parameterValues[idx] = val || ''; 
+          parameterValues[idx] = val || '';
         });
       }
 
       // Conditionally build the main content block
       let messageContentBlock;
-      const isMediaTemplate = ['Image Template', 'Video Template', 'Document Template'].includes(fullTemplate.TemplateType);
+      const isMediaTemplate = [
+        'Image Template',
+        'Video Template',
+        'Document Template',
+      ].includes(fullTemplate.TemplateType);
 
       if (isMediaTemplate) {
         msg_type = 'ATTACHMENT';
         if (fullTemplate.TemplateType === 'Image Template') mediaType = 'image';
         if (fullTemplate.TemplateType === 'Video Template') mediaType = 'video';
-        if (fullTemplate.TemplateType === 'Document Template') mediaType = 'document';
+        if (fullTemplate.TemplateType === 'Document Template')
+          mediaType = 'document';
 
         // Build the content block for a MEDIA_TEMPLATE
         messageContentBlock = {
-          "preview_url": false,
-          "type": "MEDIA_TEMPLATE",
-          "mediaTemplate": {
-            "templateId": fullTemplate.TemplateName,
-            "media": {
-              "type": mediaType,
-              "url": fullTemplate.ImagePath
+          preview_url: false,
+          type: 'MEDIA_TEMPLATE',
+          mediaTemplate: {
+            templateId: fullTemplate.TemplateName,
+            media: {
+              type: mediaType,
+              url: fullTemplate.ImagePath,
             },
-            ...(parameterValues && { "bodyParameterValues": parameterValues })
-          }
+            ...(parameterValues && { bodyParameterValues: parameterValues }),
+          },
         };
       } else {
         // Build the content block for a standard TEXT TEMPLATE
         messageContentBlock = {
-          "preview_url": false,
-          "type": "TEMPLATE",
-          "template": {
-            "templateId": fullTemplate.TemplateName,
-            ...(parameterValues && { parameterValues })
-          }
+          preview_url: false,
+          type: 'TEMPLATE',
+          template: {
+            templateId: fullTemplate.TemplateName,
+            ...(parameterValues && { parameterValues }),
+          },
         };
       }
 
       // Construct the final payload using the dynamic content block
       const payload = {
-        "message": {
-          "channel": "WABA",
-          "content": messageContentBlock, // The dynamic block is placed here
-          "recipient": {
-            "to": to,
-            "recipient_type": "individual",
-            "reference": {
-              "cust_ref": "Some Customer Ref",
-              "messageTag1": "Message Tag Val1",
-              "conversationId": "Some Optional Conversation ID"
-            }
+        message: {
+          channel: 'WABA',
+          content: messageContentBlock, // The dynamic block is placed here
+          recipient: {
+            to: to,
+            recipient_type: 'individual',
+            reference: {
+              cust_ref: 'Some Customer Ref',
+              messageTag1: 'Message Tag Val1',
+              conversationId: 'Some Optional Conversation ID',
+            },
           },
-          "sender": {
-            "from": user.WhatsAppSenderID
+          sender: {
+            from: user.WhatsAppSenderID,
           },
-          "preferences": {
-            "webHookDNId": "1001"
-          }
+          preferences: {
+            webHookDNId: '1001',
+          },
         },
-        "metaData": {
-          "version": "v1.0.9"
-        }
+        metaData: {
+          version: 'v1.0.9',
+        },
       };
 
       console.log('Sending payload:', JSON.stringify(payload, null, 2));
 
       // Step 3: Send the message via API
-      const sendRes = await fetch('https://rcmapi.instaalerts.zone/services/rcm/sendMessage', {
-        method: 'POST',
-        headers: {
-          'Authentication': `Bearer ${bearerToken}`,
-          'Content-Type': 'application/json',
+      const sendRes = await fetch(
+        'https://rcmapi.instaalerts.zone/services/rcm/sendMessage',
+        {
+          method: 'POST',
+          headers: {
+            Authentication: `Bearer ${bearerToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      });
+      );
       // if(sendRes.ok) ToastMessage(`Template ${fullTemplate.TemplateType} sent successfully to ${to}`);
-      if (!sendRes.ok) throw new Error(`Send message failed with status: ${sendRes.status}`);
+      if (!sendRes.ok)
+        throw new Error(`Send message failed with status: ${sendRes.status}`);
       const result = await sendRes.json();
       console.log('API result:', result);
-
-      // Step 4: Save sent message details to your server
       if (result && result.mid) {
-        console.log('Message sent successfully, now saving details to server...');
+        console.log(
+          'Message sent successfully, now saving details to server...',
+        );
         const messageDetailsToSave = {
           sender: user.WhatsAppSenderID,
           logId: user.LoginID,
@@ -150,15 +175,16 @@ const TemplateCard = ({ template, recipientNumber }) => {
           serviceType: fullTemplate.ServiceType,
           imagePath: fullTemplate.ImagePath,
           attachmentName: mediaType,
-          messageType : msg_type,
+          messageType: msg_type,
         };
-        console.log('Prepared message details for saving:', messageDetailsToSave);
-        
-        saveSentMessage(messageDetailsToSave);
+
+        await saveSentMessage(messageDetailsToSave);
+
+        // ✅ Navigate to OwnChat screen after success
+        navigation.navigate('ChatScreen', { number: to, refresh: true });
       } else {
         throw new Error('Message sending was not accepted by the API.');
       }
-
     } catch (err) {
       Alert.alert('Error', err.message);
       console.error(err);
@@ -167,12 +193,15 @@ const TemplateCard = ({ template, recipientNumber }) => {
     }
   };
 
-
-  const renderTemplateText = (text) => {
+  const renderTemplateText = text => {
     const lines = text.split(/\r\n|\n/g);
     return lines.map((line, index) => (
       <Text key={index} style={styles.templateContent}>
-        {line.includes('*') ? <Text style={styles.boldText}>{line.replace(/\*/g, '')}</Text> : line}
+        {line.includes('*') ? (
+          <Text style={styles.boldText}>{line.replace(/\*/g, '')}</Text>
+        ) : (
+          line
+        )}
       </Text>
     ));
   };
@@ -182,7 +211,6 @@ const TemplateCard = ({ template, recipientNumber }) => {
     newValues[index] = text;
     setVariableValues(newValues);
     console.log('variable values:', variableValues);
-
   };
 
   //  "Confirm" button in the modal is clicked
@@ -190,7 +218,10 @@ const TemplateCard = ({ template, recipientNumber }) => {
     let constructedMessage = Template;
     variableValues.forEach(value => {
       // Replace only the first occurrence to handle multiple variables correctly
-      constructedMessage = constructedMessage.replace('{Variable}', value || '<empty>');
+      constructedMessage = constructedMessage.replace(
+        '{Variable}',
+        value || '<empty>',
+      );
     });
     setFinalMessage(constructedMessage); // Set the final message for preview
     setIsModalVisible(false); // Close the modal
@@ -201,21 +232,26 @@ const TemplateCard = ({ template, recipientNumber }) => {
     const messageToSend = finalMessage || Template;
 
     const to = recipientNumber;
-    sendMessageApi({ to, TemplateName, messageContent: messageToSend, fullTemplate: template });
-
+    sendMessageApi({
+      to,
+      TemplateName,
+      messageContent: messageToSend,
+      fullTemplate: template,
+    });
   };
   return (
     <View style={styles.card}>
       {loading && (
-        <View style={{ position: 'absolute', top: 10, left: 10, right: 10, zIndex: 10 }}>
-          <Text style={{ color: 'blue', textAlign: 'center' }}>Sending...</Text>
+        <View style={styles.loaderOverlay}>
+          <WhatsAppLoaders type="bar" />
         </View>
       )}
       <Modal
         animationType="slide"
         transparent={true}
         visible={isModalVisible}
-        onRequestClose={() => setIsModalVisible(false)}>
+        onRequestClose={() => setIsModalVisible(false)}
+      >
         <View style={styles.modalContainer}>
           <View style={styles.modalView}>
             <Text style={styles.modalTitle}>Set Template Variables</Text>
@@ -225,7 +261,7 @@ const TemplateCard = ({ template, recipientNumber }) => {
                   <Text style={styles.inputLabel}>Variable #{index + 1}</Text>
                   <TextInput
                     style={styles.input}
-                    onChangeText={(text) => handleVariableChange(text, index)}
+                    onChangeText={text => handleVariableChange(text, index)}
                     value={value}
                     placeholder={`Enter value for variable ${index + 1}`}
                   />
@@ -233,7 +269,11 @@ const TemplateCard = ({ template, recipientNumber }) => {
               ))}
             </ScrollView>
             <View style={styles.modalButtonContainer}>
-              <Button title="Cancel" onPress={() => setIsModalVisible(false)} color="gray" />
+              <Button
+                title="Cancel"
+                onPress={() => setIsModalVisible(false)}
+                color="gray"
+              />
               <Button title="Confirm" onPress={handleConfirmVariables} />
             </View>
           </View>
@@ -241,24 +281,32 @@ const TemplateCard = ({ template, recipientNumber }) => {
       </Modal>
 
       {/* Media Content */}
-      {ImagePath && ImagePath !== "https://loadcrm.com/Portal" && (
+      {ImagePath && ImagePath !== 'https://loadcrm.com/Portal' && (
         <View style={styles.mediaContainer}>
           {TemplateType === 'Image Template' && (
-            <Image source={{ uri: ImagePath }} style={styles.mediaImage} resizeMode="contain" />
+            <Image
+              source={{ uri: ImagePath }}
+              style={styles.mediaImage}
+              resizeMode="contain"
+            />
           )}
           {TemplateType === 'Video Template' && (
-            <Video source={{ uri: ImagePath }} style={styles.video} controls={true} paused={true} />
+            <Video
+              source={{ uri: ImagePath }}
+              style={styles.video}
+              controls={true}
+              paused={true}
+            />
           )}
           {TemplateType === 'Document Template' && (
             <View style={styles.mediaPlaceholder}>
               {/* <Text style={styles.mediaText}>📄 Document: {FileName || 'View'}</Text> */}
               <AuthenticatedPdfViewer
-              sourceUrl={ImagePath}
-              // authToken={yourAuthToken}
-            />
+                sourceUrl={ImagePath}
+                // authToken={yourAuthToken}
+              />
             </View>
           )}
-           
         </View>
       )}
 
@@ -274,7 +322,9 @@ const TemplateCard = ({ template, recipientNumber }) => {
           </View>
         )}
         <View>
-          <Text>Category: <Text style={styles.boldText}>{Category}</Text></Text>
+          <Text>
+            Category: <Text style={styles.boldText}>{Category}</Text>
+          </Text>
         </View>
 
         {/* Action Buttons */}
@@ -282,18 +332,21 @@ const TemplateCard = ({ template, recipientNumber }) => {
           {variableCount > 0 && (
             <TouchableOpacity
               onPress={() => setIsModalVisible(true)}
-              style={[styles.button, styles.secondaryButton]}>
-              <Text style={styles.secondaryButtonText}>{finalMessage ? 'Edit Variables' : 'Set Variables'}</Text>
+              style={[styles.button, styles.secondaryButton]}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {finalMessage ? 'Edit Variables' : 'Set Variables'}
+              </Text>
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
             onPress={handleFinalSend}
             style={[styles.button, styles.primaryButton]}
-            disabled={variableCount > 0 && !finalMessage}>
+            disabled={variableCount > 0 && !finalMessage}
+          >
             <Text style={styles.primaryButtonText}>Send</Text>
           </TouchableOpacity>
-
         </View>
       </View>
     </View>
@@ -302,11 +355,11 @@ const TemplateCard = ({ template, recipientNumber }) => {
 
 // --- STYLES ---
 const styles = StyleSheet.create({
-   pdf: {
-        flex: 1,
-        width: '100%',
-        height: 500 // or adjust as needed
-    },
+  pdf: {
+    flex: 1,
+    width: '100%',
+    height: 500, // or adjust as needed
+  },
   card: {
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -341,7 +394,7 @@ const styles = StyleSheet.create({
     height: 200,
   },
   video: {
-    width: "100%",
+    width: '100%',
     height: 200,
   },
   mediaPlaceholder: {
@@ -349,7 +402,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    height:200,
+    height: 200,
     maxHeight: 300,
   },
   mediaText: {
