@@ -166,6 +166,7 @@ const OwnChat = ({ navigation }) => {
       }))
       .sort((a, b) => (b.lastDate || 0) - (a.lastDate || 0));
   }, [contactList]);
+
   const filteredContacts = useMemo(() => {
     if (!search) return sortedContactArray;
     return sortedContactArray.filter(
