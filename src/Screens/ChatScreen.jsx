@@ -382,6 +382,7 @@ import {
   StyleSheet,
   Modal,
   Image,
+  Linking,
 } from 'react-native';
 import { COLORS } from '../Constants/Colors';
 import Feather from 'react-native-vector-icons/Feather';
@@ -390,6 +391,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { UserContext } from '../Context/UserContext';
 import { API_URL } from '../config';
 import WhatsAppLoaders from '../Components/WhatsAppLoaders';
+import Video from 'react-native-video';
 
 function flattenChatsByDate(chats) {
   const groups = {};
@@ -404,11 +406,13 @@ function flattenChatsByDate(chats) {
     if (!groups[dateLabel]) groups[dateLabel] = [];
     groups[dateLabel].push(chat);
   });
+
   const sortedDates = Object.keys(groups).sort(
     (a, b) =>
       new Date(a.split('-').reverse().join('-')) -
       new Date(b.split('-').reverse().join('-')),
   );
+
   return sortedDates.flatMap(date => [
     { type: 'date', date },
     ...groups[date].map(chat => ({ type: 'message', ...chat })),
@@ -428,7 +432,7 @@ const ChatScreen = ({ route }) => {
   const flatListRef = useRef(null);
   const { user } = useContext(UserContext);
 
-  // --- Fetch eligibility ---
+  // ✅ Check message eligibility
   const checkEligibility = async () => {
     try {
       setLoading(true);
@@ -438,7 +442,6 @@ const ChatScreen = ({ route }) => {
         { method: 'POST' },
       );
       const data = await response.json();
-      console.log('data chat', data);
       setCheckMessageEligibility(data.Data === 'Yes');
     } catch (error) {
       console.error('Eligibility check failed:', error);
@@ -447,7 +450,7 @@ const ChatScreen = ({ route }) => {
     }
   };
 
-  // --- Fetch chats dynamically ---
+  // ✅ Fetch chats dynamically
   const fetchChats = async () => {
     setLoading(true);
     try {
@@ -455,46 +458,38 @@ const ChatScreen = ({ route }) => {
       const clientId = number;
       let sinceDate = '1900-01-01T00:00:00.000';
       if (chats.length > 0) {
-        // Sort to find the latest ProcessDate
         const sortedChats = [...chats].sort(
           (a, b) => new Date(b.ProcessDate) - new Date(a.ProcessDate),
         );
-        const latestChat = sortedChats[0];
-        sinceDate = new Date(latestChat.ProcessDate).toISOString();
+        sinceDate = new Date(sortedChats[0].ProcessDate).toISOString();
       }
-      const data = {
-        SenderId: senderId,
-        ClientId: clientId,
-        Date: sinceDate,
-      };
-      console.log('data >>>>', data);
+
       const response = await fetch(
         'https://www.loadcrm.com/whatsappmobileapis/api/GetClientChat',
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            SenderId: senderId,
+            ClientId: clientId,
+            Date: sinceDate,
+          }),
         },
       );
+
       const result = await response.json();
       let newChats = Array.isArray(result.Data) ? result.Data : [];
-      // Filter out duplicates based on id
+
       const existingIds = new Set(chats.map(c => c.id));
       newChats = newChats.filter(c => !existingIds.has(c.id));
-      // Append new chats, dedupe again for safety, and sort by ProcessDate
+
       setChats(prev => {
-        const allChats = [...prev, ...newChats];
-        // Dedupe by id
-        const uniqueChats = Array.from(
-          new Map(allChats.map(chat => [chat.id, chat])).values(),
-        );
-        // Sort by ProcessDate ascending
-        uniqueChats.sort(
+        const merged = [...prev, ...newChats];
+        const unique = Array.from(new Map(merged.map(c => [c.id, c])).values());
+        unique.sort(
           (a, b) => new Date(a.ProcessDate) - new Date(b.ProcessDate),
         );
-        return uniqueChats;
+        return unique;
       });
     } catch (error) {
       console.error('Fetch chats failed:', error);
@@ -505,12 +500,9 @@ const ChatScreen = ({ route }) => {
 
   useEffect(() => {
     checkEligibility();
-    if (chats.length === 0 || refresh) {
-      fetchChats();
-    }
+    if (chats.length === 0 || refresh) fetchChats();
   }, [refresh]);
 
-  // Refresh chats when screen comes into focus (e.g., returning from Templates)
   useFocusEffect(
     React.useCallback(() => {
       fetchChats();
@@ -521,33 +513,28 @@ const ChatScreen = ({ route }) => {
 
   const handleSend = () => {
     if (message.trim()) {
+      // Future send API call can be added here
       setMessage('');
     }
   };
 
   const handleInputPress = () => {
-    if (!checkMessageEligibility) {
-      setModalVisible(true);
-    }
+    if (!checkMessageEligibility) setModalVisible(true);
   };
 
   const handleModalOk = () => {
     setModalVisible(false);
-    navigation.navigate('Templates', { number });
+    navigation.replace('Templates', { number });
   };
 
-  // --- Auto scroll to bottom ---
-  useEffect(() => {
-    if (flatListRef.current && flatData.length > 0) {
-      flatListRef.current.scrollToEnd({ animated: true });
-    }
-  }, [flatData]);
-
-  const handleContentSizeChange = () => {
+  // ✅ Auto scroll
+  const scrollToBottom = () => {
     if (flatListRef.current) {
       flatListRef.current.scrollToEnd({ animated: true });
     }
   };
+
+  useEffect(scrollToBottom, [flatData]);
 
   if (loading) {
     return (
@@ -556,6 +543,54 @@ const ChatScreen = ({ route }) => {
       </View>
     );
   }
+
+  const renderAttachment = chat => {
+    if (!chat || !chat.Imagepath) return null;
+
+    const uri = chat.Imagepath;
+    const type = chat.Attachement_Type?.toLowerCase() || '';
+
+    // ✅ IMAGE
+    if (type === 'image' || uri.match(/\.(jpg|jpeg|png|gif)$/i)) {
+      return (
+        <Image source={{ uri }} style={styles.mediaImage} resizeMode="cover" />
+      );
+    }
+
+    // ✅ VIDEO
+    if (type === 'video' || uri.match(/\.(mp4|mov|avi)$/i)) {
+      return (
+        <Video source={{ uri }} style={styles.mediaVideo} controls paused />
+      );
+    }
+
+    // ✅ AUDIO
+    if (type === 'audio' || uri.match(/\.(mp3|wav|m4a)$/i)) {
+      return (
+        <View style={styles.audioContainer}>
+          <Feather name="headphones" size={28} color={COLORS.light.primary} />
+          <TouchableOpacity onPress={() => Linking.openURL(uri)}>
+            <Text style={styles.audioText}>
+              {chat.Attachement_Caption || 'Play Audio'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // ✅ DOCUMENT (pdf, docx, xls)
+    if (type === 'document' || uri.match(/\.(pdf|docx|xls|xlsx)$/i)) {
+      return (
+        <TouchableOpacity onPress={() => Linking.openURL(uri)}>
+          <Text style={styles.documentText}>
+            {chat.Attachement_Caption || 'Open Document'}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+
+    return null;
+  };
 
   const renderItem = ({ item }) => {
     if (item.type === 'date') {
@@ -566,26 +601,6 @@ const ChatScreen = ({ route }) => {
       );
     }
 
-    const isAttachment = item.MessageType === 'ATTACHMENT' || item.Imagepath;
-    let mediaContent = null;
-
-    if (isAttachment && item.Imagepath) {
-      const isImage =
-        item.Attachement_Type === 'image' ||
-        item.Imagepath.endsWith('.png') ||
-        item.Imagepath.endsWith('.jpg') ||
-        item.Imagepath.endsWith('.jpeg');
-      if (isImage) {
-        mediaContent = (
-          <Image
-            source={{ uri: item.Imagepath }}
-            style={styles.messageImage}
-            resizeMode="contain"
-          />
-        );
-      } // Add similar for video, audio, document if needed
-    }
-
     return (
       <View
         style={[
@@ -593,20 +608,17 @@ const ChatScreen = ({ route }) => {
           item.Mode === 'Send' ? styles.sent : styles.received,
         ]}
       >
-        {mediaContent}
-        {item.MessageText && (
+        {item.MessageType === 'ATTACHMENT' && renderAttachment(item)}
+
+        {item.MessageText ? (
           <Text style={styles.messageText}>{item.MessageText}</Text>
-        )}
-        {item.Attachement_Caption && (
+        ) : null}
+
+        {item.Attachement_Caption ? (
           <Text style={styles.captionText}>{item.Attachement_Caption}</Text>
-        )}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-          }}
-        >
+        ) : null}
+
+        <View style={styles.timeRow}>
           <Text style={styles.messageTime}>
             {item.ProcessDate
               ? new Date(item.ProcessDate).toLocaleTimeString('en-IN', {
@@ -630,23 +642,23 @@ const ChatScreen = ({ route }) => {
 
   return (
     <View style={styles.container}>
+      {/* ✅ Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.navigate('OwnChat')}>
           <Feather name="arrow-left" size={30} color="#fff" />
         </TouchableOpacity>
-        <View
-          style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}
-        >
+        <View style={styles.headerInfo}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>A</Text>
           </View>
           <Text style={styles.headerText}>{number}</Text>
         </View>
         <TouchableOpacity onPress={fetchChats} style={{ marginLeft: 'auto' }}>
-          <Feather name="refresh-cw" size={30} color="#fff" />
+          <Feather name="refresh-cw" size={28} color="#fff" />
         </TouchableOpacity>
       </View>
 
+      {/* ✅ Chat list */}
       <FlatList
         ref={flatListRef}
         data={flatData}
@@ -657,9 +669,10 @@ const ChatScreen = ({ route }) => {
         }
         renderItem={renderItem}
         contentContainerStyle={{ padding: 10, paddingBottom: 20 }}
-        onContentSizeChange={handleContentSizeChange}
+        onContentSizeChange={scrollToBottom}
       />
 
+      {/* ✅ Input Section */}
       <View style={styles.inputContainerTextMessage}>
         {checkMessageEligibility ? (
           <TextInput
@@ -667,23 +680,20 @@ const ChatScreen = ({ route }) => {
             placeholder="Type a message..."
             value={message}
             onChangeText={setMessage}
-            multiline={true}
+            multiline
             placeholderTextColor="#888"
           />
         ) : (
           <TouchableOpacity
-            style={styles.inputWrapper}
             onPress={handleInputPress}
-            activeOpacity={0.7}
+            style={styles.inputWrapper}
           >
             <TextInput
               style={[styles.input, styles.disabledInput]}
               placeholder="Type a message..."
               value={message}
-              onChangeText={setMessage}
-              multiline={true}
-              placeholderTextColor="#888"
               editable={false}
+              placeholderTextColor="#888"
             />
           </TouchableOpacity>
         )}
@@ -702,12 +712,8 @@ const ChatScreen = ({ route }) => {
         )}
       </View>
 
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
+      {/* ✅ Modal */}
+      <Modal animationType="slide" transparent visible={modalVisible}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalText}>
@@ -726,6 +732,7 @@ const ChatScreen = ({ route }) => {
   );
 };
 
+// ✅ Styles
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: {
@@ -733,12 +740,9 @@ const styles = StyleSheet.create({
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
     elevation: 4,
   },
+  headerInfo: { flexDirection: 'row', alignItems: 'center', marginLeft: 8 },
   headerText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   avatar: {
     width: 40,
@@ -759,7 +763,13 @@ const styles = StyleSheet.create({
   sent: { backgroundColor: '#d1f7c4', alignSelf: 'flex-end' },
   received: { backgroundColor: '#fff', alignSelf: 'flex-start' },
   messageText: { fontSize: 16, color: '#333' },
-  messageTime: { fontSize: 12, color: '#888', alignSelf: 'flex-end' },
+  captionText: { fontSize: 14, color: '#666', marginTop: 5 },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  messageTime: { fontSize: 12, color: '#888' },
   inputContainerTextMessage: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -768,10 +778,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 25,
     margin: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     elevation: 2,
   },
   inputWrapper: { flex: 1 },
@@ -783,18 +789,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 2,
   },
   input: {
     flex: 1,
     minHeight: 40,
     maxHeight: 120,
     paddingHorizontal: 16,
-    paddingVertical: 8,
     fontSize: 16,
     color: '#333',
   },
@@ -808,16 +808,11 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   dateSectionText: { fontSize: 13, color: '#fff', fontWeight: 'bold' },
-  loaderWrapper: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.9)',
-  },
+  loaderWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContainer: {
     backgroundColor: '#fff',
@@ -839,16 +834,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   modalButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  messageImage: {
-    width: 200,
-    height: 200,
-    borderRadius: 10,
-    marginBottom: 5,
-  },
-  captionText: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 5,
+  mediaImage: { width: 200, height: 200, borderRadius: 10, marginBottom: 5 },
+  mediaVideo: { width: 200, height: 200, borderRadius: 10, marginBottom: 5 },
+  audioContainer: { flexDirection: 'row', alignItems: 'center' },
+  audioText: { color: COLORS.light.primary, marginLeft: 8, fontSize: 16 },
+  documentText: {
+    color: COLORS.light.primary,
+    textDecorationLine: 'underline',
   },
 });
 

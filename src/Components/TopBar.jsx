@@ -36,15 +36,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 30,
+    paddingHorizontal: 10,
     borderBottomWidth: 0.2,
     borderBottomColor: '#ccc',
   },
   header: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '900',
     color: '#000',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   iconsRow: {
     flexDirection: 'row',

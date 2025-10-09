@@ -178,10 +178,11 @@ const TemplateCard = ({ template, recipientNumber }) => {
           messageType: msg_type,
         };
 
+        // ✅ inside sendMessageApi after saveSentMessage:
         await saveSentMessage(messageDetailsToSave);
 
-        // ✅ Navigate to OwnChat screen after success
-        navigation.navigate('ChatScreen', { number: to, refresh: true });
+        // ✅ navigate cleanly without stacking
+        navigation.replace('ChatScreen', { number: to, refresh: true });
       } else {
         throw new Error('Message sending was not accepted by the API.');
       }

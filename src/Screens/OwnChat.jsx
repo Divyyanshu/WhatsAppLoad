@@ -233,7 +233,7 @@ const OwnChat = ({ navigation }) => {
       {/* Loader Integration */}
       {isLoading ? (
         <View style={styles.loaderWrapper}>
-          <WhatsAppLoaders type="dots" color={COLORS.loader} />
+          <WhatsAppLoaders type="dots" color={COLORS.light.primary} />
         </View>
       ) : (
         <FlatList
