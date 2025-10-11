@@ -227,7 +227,7 @@ const OwnChat = ({ navigation }) => {
             placeholderTextColor={'#888'}
             value={search}
             onChangeText={setSearch}
-            inputMode="numeric"
+            inputMode="search"
           />
           {search?.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
