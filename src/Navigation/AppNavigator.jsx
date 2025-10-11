@@ -9,6 +9,7 @@ import ChatScreen from '../Screens/ChatScreen';
 import TemplateListScreen from '../Screens/TemplateListScreen';
 import SplashScreen from '../Screens/SplashScreen';
 import { UserContext } from '../Context/UserContext';
+import MyScreen from '../Screens/MyScreen';
 
 const Stack = createStackNavigator();
 
@@ -45,6 +46,7 @@ const AppNavigator = () => {
           component={TemplateListScreen}
           options={{ title: 'Send template messages' }}
         />
+        <Stack.Screen name="MyScreen" component={MyScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

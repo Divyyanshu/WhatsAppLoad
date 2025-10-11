@@ -13,7 +13,9 @@ import {
 } from 'react-native';
 
 // You can replace this with your actual image asset
-const loginIllustration = { uri: 'https://placehold.co/300x200/E0E0E0/333333?text=Illustration' };
+const loginIllustration = {
+  uri: 'https://placehold.co/300x200/E0E0E0/333333?text=Illustration',
+};
 
 const LoginScreen = () => {
   const [username, setUsername] = useState('');
@@ -63,7 +65,9 @@ const LoginScreen = () => {
                 style={styles.eyeIcon}
                 onPress={() => setIsPasswordVisible(!isPasswordVisible)}
               >
-                <Text style={styles.eyeText}>{isPasswordVisible ? '👁️' : '👁️'}</Text>
+                <Text style={styles.eyeText}>
+                  {isPasswordVisible ? '👁️' : '👁️'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -73,8 +77,6 @@ const LoginScreen = () => {
             <TouchableOpacity style={styles.signInButton}>
               <Text style={styles.signInButtonText}>Sign In</Text>
             </TouchableOpacity>
-
-            
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -192,4 +194,3 @@ const styles = StyleSheet.create({
 });
 
 export default LoginScreen;
-
