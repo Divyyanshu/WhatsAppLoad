@@ -26,8 +26,8 @@ const styles = StyleSheet.create({
   },
   boldText: {
     fontWeight: '700',
-    // color: '#6b7280',
-    color: COLORS.light.primary,
+    color: '#6b7280',
+    // color: COLORS.light.primary,
     fontSize: CommonFonts.font14,
   },
 });
