@@ -392,6 +392,7 @@ import { UserContext } from '../Context/UserContext';
 import { API_URL } from '../config';
 import WhatsAppLoaders from '../Components/WhatsAppLoaders';
 import Video from 'react-native-video';
+import Footer from '../Components/Footer';
 
 function flattenChatsByDate(chats) {
   const groups = {};
@@ -432,7 +433,7 @@ const ChatScreen = ({ route }) => {
   const flatListRef = useRef(null);
   const { user } = useContext(UserContext);
 
-  // ✅ Check message eligibility
+  //Check message eligibility
   const checkEligibility = async () => {
     try {
       setLoading(true);
@@ -450,7 +451,7 @@ const ChatScreen = ({ route }) => {
     }
   };
 
-  // ✅ Fetch chats dynamically
+  //Fetch chats dynamically
   const fetchChats = async () => {
     setLoading(true);
     try {
@@ -527,7 +528,7 @@ const ChatScreen = ({ route }) => {
     navigation.replace('Templates', { number });
   };
 
-  // ✅ Auto scroll
+  //Auto scroll
   const scrollToBottom = () => {
     if (flatListRef.current) {
       flatListRef.current.scrollToEnd({ animated: true });
@@ -550,21 +551,21 @@ const ChatScreen = ({ route }) => {
     const uri = chat.Imagepath;
     const type = chat.Attachement_Type?.toLowerCase() || '';
 
-    // ✅ IMAGE
+    //IMAGE
     if (type === 'image' || uri.match(/\.(jpg|jpeg|png|gif)$/i)) {
       return (
         <Image source={{ uri }} style={styles.mediaImage} resizeMode="cover" />
       );
     }
 
-    // ✅ VIDEO
+    //VIDEO
     if (type === 'video' || uri.match(/\.(mp4|mov|avi)$/i)) {
       return (
         <Video source={{ uri }} style={styles.mediaVideo} controls paused />
       );
     }
 
-    // ✅ AUDIO
+    //AUDIO
     if (type === 'audio' || uri.match(/\.(mp3|wav|m4a)$/i)) {
       return (
         <View style={styles.audioContainer}>
@@ -578,7 +579,7 @@ const ChatScreen = ({ route }) => {
       );
     }
 
-    // ✅ DOCUMENT (pdf, docx, xls)
+    //DOCUMENT (pdf, docx, xls)
     if (type === 'document' || uri.match(/\.(pdf|docx|xls|xlsx)$/i)) {
       return (
         <TouchableOpacity onPress={() => Linking.openURL(uri)}>
@@ -642,7 +643,7 @@ const ChatScreen = ({ route }) => {
 
   return (
     <View style={styles.container}>
-      {/* ✅ Header */}
+      {/*Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.navigate('OwnChat')}>
           <Feather name="arrow-left" size={30} color="#fff" />
@@ -658,7 +659,7 @@ const ChatScreen = ({ route }) => {
         </TouchableOpacity>
       </View>
 
-      {/* ✅ Chat list */}
+      {/*Chat list */}
       <FlatList
         ref={flatListRef}
         data={flatData}
@@ -672,7 +673,7 @@ const ChatScreen = ({ route }) => {
         onContentSizeChange={scrollToBottom}
       />
 
-      {/* ✅ Input Section */}
+      {/*Input Section */}
       <View style={styles.inputContainerTextMessage}>
         {checkMessageEligibility ? (
           <TextInput
@@ -712,7 +713,7 @@ const ChatScreen = ({ route }) => {
         )}
       </View>
 
-      {/* ✅ Modal */}
+      {/*Modal */}
       <Modal animationType="slide" transparent visible={modalVisible}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -728,11 +729,12 @@ const ChatScreen = ({ route }) => {
           </View>
         </View>
       </Modal>
+      <Footer companyName="Load Infotech" />
     </View>
   );
 };
 
-// ✅ Styles
+//Styles
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f5' },
   header: {

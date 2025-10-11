@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { CommonFonts, CommonHeights } from '../Constants/dimension';
+import { COLORS } from '../Constants/Colors';
 
 const Footer = ({ companyName = 'Load Infotech' }) => {
   return (
@@ -25,7 +26,8 @@ const styles = StyleSheet.create({
   },
   boldText: {
     fontWeight: '700',
-    color: '#6b7280',
+    // color: '#6b7280',
+    color: COLORS.light.primary,
     fontSize: CommonFonts.font14,
   },
 });

@@ -24,6 +24,7 @@ import TopBar from '../Components/TopBar';
 import WhatsAppLoaders from '../Components/WhatsAppLoaders';
 import { COLORS } from '../Constants/Colors';
 import { useRoute, useFocusEffect } from '@react-navigation/native';
+import Footer from '../Components/Footer';
 
 // --- Utility Functions ---
 const pad = n => (n < 10 ? '0' + n : n);
@@ -292,6 +293,7 @@ const OwnChat = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+      <Footer companyName="Load Infotech" />
     </View>
   );
 };

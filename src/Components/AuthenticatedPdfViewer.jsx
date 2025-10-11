@@ -23,28 +23,25 @@ const AuthenticatedPdfViewer = ({ sourceUrl }) => {
 
       try {
         console.log(`Downloading PDF from: ${sourceUrl}`);
-        
+
         const response = await RNFS.downloadFile({
           fromUrl: sourceUrl,
           toFile: localFile,
-          // IMPORTANT: Add your authentication headers here!
-          // This is what allows your app to access the file.
-        //   headers: {
-        //     'Authorization': `Bearer ${authToken}`,
-        //     // Add any other headers your API requires
-        //     // 'X-API-KEY': 'YOUR_API_KEY',
-        //   },
         }).promise;
 
         if (response.statusCode === 200) {
           console.log('PDF downloaded successfully to:', localFile);
           setLocalPdfPath(localFile);
         } else {
-          // If the server returns an error (like 401 Unauthorized or 404 Not Found)
           const errorBody = await RNFS.readFile(localFile);
-          console.error(`Failed to download PDF. Status: ${response.statusCode}`, errorBody);
-          setError(`Failed to load document. Server responded with status ${response.statusCode}.`);
-          await RNFS.unlink(localFile).catch(() => {}); // Clean up failed download
+          console.error(
+            `Failed to download PDF. Status: ${response.statusCode}`,
+            errorBody,
+          );
+          setError(
+            `Failed to load document. Server responded with status ${response.statusCode}.`,
+          );
+          await RNFS.unlink(localFile).catch(() => {});
         }
       } catch (err) {
         console.error('Error downloading PDF:', err);
@@ -80,10 +77,10 @@ const AuthenticatedPdfViewer = ({ sourceUrl }) => {
         trustAllCerts={false}
         // The source is now the LOCAL file path
         source={{ uri: `file://${localPdfPath}` }}
-        onLoadComplete={(numberOfPages) => {
+        onLoadComplete={numberOfPages => {
           console.log(`Number of pages: ${numberOfPages}`);
         }}
-        onError={(pdfError) => {
+        onError={pdfError => {
           console.error('Error rendering PDF:', pdfError);
           setError('Could not display the PDF file.');
         }}

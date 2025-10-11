@@ -255,6 +255,7 @@ import {
   Image,
   ActivityIndicator,
   Modal,
+  Linking,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import FloatingLabelInput from '../Components/FloatingLabelInput.jsx';
@@ -415,10 +416,15 @@ const LoginScreen = () => {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Forgot Password !</Text>
+              <Text style={styles.modalTitle}>Forgot Password!</Text>
               <Text style={styles.modalText}>
                 To recover your password, call us at{' '}
-                <Text style={styles.phoneNumber}>+91-7665623850</Text>.
+                <Text
+                  style={styles.phoneNumber}
+                  onPress={() => Linking.openURL('tel:+917665623850')}
+                >
+                  +91-7665623850
+                </Text>
               </Text>
 
               <TouchableOpacity
@@ -539,6 +545,7 @@ const styles = StyleSheet.create({
   phoneNumber: {
     fontWeight: '700',
     color: COLORS.light.black,
+    textDecorationLine: 'underline',
   },
   modalButton: {
     backgroundColor: COLORS.light.primary,
