@@ -89,8 +89,7 @@ const OwnChat = ({ navigation }) => {
     useCallback(() => {
       if (route.params?.refresh) {
         console.log('Auto-refresh triggered from TemplateCard 🚀');
-        handleRefresh(); // reuse your existing refresh logic
-        // reset flag to avoid looping
+        handleRefresh();
         navigation.setParams({ refresh: false });
       }
     }, [route.params?.refresh]),
