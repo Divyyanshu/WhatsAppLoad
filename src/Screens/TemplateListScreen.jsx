@@ -189,7 +189,6 @@ const TemplateListScreen = ({ route }) => {
           <Text>No templates found matching your search.</Text>
         </View>
       )}
-      <Footer companyName="Load Infotech" />
     </SafeAreaView>
   );
 };

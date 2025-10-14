@@ -4,6 +4,12 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
+	<key>NSCameraUsageDescription</key>
+<string>Allow $(PRODUCT_NAME) to access your camera</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Allow $(PRODUCT_NAME) to access your photo library</string>
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Allow $(PRODUCT_NAME) to save photos</string>
 	<key>CFBundleDisplayName</key>
 	<string>LoadWhatsapp</string>
 	<key>CFBundleExecutable</key>
