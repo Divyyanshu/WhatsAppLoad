@@ -655,9 +655,9 @@ import { API_URL } from '../config';
 import TopBar from '../Components/TopBar';
 import WhatsAppLoaders from '../Components/WhatsAppLoaders';
 import { COLORS } from '../Constants/Colors';
-import { useRoute, useFocusEffect } from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
 
-// Utility to close WebSocket with a promise
+// --- Utility to close WebSocket gracefully ---
 const closeWebSocket = (wsRef, reconnectTimeoutRef) => {
   return new Promise(resolve => {
     if (wsRef.current) {
@@ -686,9 +686,8 @@ const closeWebSocket = (wsRef, reconnectTimeoutRef) => {
   });
 };
 
-// --- Utility Functions ---
+// --- Utilities ---
 const pad = n => (n < 10 ? '0' + n : n);
-
 const colorScheme = Appearance.getColorScheme();
 const theme = colorScheme === 'dark' ? COLORS.dark : COLORS.light;
 
@@ -711,14 +710,15 @@ function getDateLabel(date) {
 
 const groupChatsByMobileNo = chatsArray => {
   if (!Array.isArray(chatsArray)) return {};
-  return chatsArray.reduce((groupedData, currentChat) => {
-    const mobileNo = currentChat.ClientMobileno;
-    if (!groupedData[mobileNo]) groupedData[mobileNo] = [];
-    groupedData[mobileNo].push(currentChat);
-    return groupedData;
+  return chatsArray.reduce((grouped, chat) => {
+    const mobile = chat.ClientMobileno;
+    if (!grouped[mobile]) grouped[mobile] = [];
+    grouped[mobile].push(chat);
+    return grouped;
   }, {});
 };
 
+// --- ChatItem ---
 const ChatItem = React.memo(({ item, index, onPress }) => {
   const unread = item.unread || 0;
   const isUnread = unread > 0;
@@ -776,7 +776,8 @@ const OwnChat = ({ navigation }) => {
   const [contactList, setContactList] = useState({});
   const [unreadCounts, setUnreadCounts] = useState({});
   const [isLoading, setIsLoading] = useState(true);
-  const [isConnected, setIsConnected] = useState(false); // New state for WebSocket status
+  const [isConnected, setIsConnected] = useState(false);
+  const [profileMap, setProfileMap] = useState({});
   const route = useRoute();
 
   const { user, logout, authenticated } = useContext(UserContext);
@@ -785,181 +786,142 @@ const OwnChat = ({ navigation }) => {
 
   console.log('Current user from context:', user);
 
-  const setupWebSocket = useCallback(() => {
-    // Guard: Skip if user or WhatsAppSenderID is not ready
-    if (!user || !user.WhatsAppSenderID) {
-      console.log(
-        'User or WhatsAppSenderID not ready, skipping WebSocket setup',
-        { user },
+  // --- Fetch Profile Names (merged, safe) ---
+  const fetchProfileNames = useCallback(async () => {
+    try {
+      if (!user?.WhatsAppSenderID) {
+        console.log('Skipping GetUserProfileName — sender not ready');
+        return;
+      }
+
+      const data = JSON.stringify({ SenderID: user.WhatsAppSenderID });
+      const response = await fetch(
+        'https://www.loadcrm.com/whatsappmobileapis/api/GetUserProfileName',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: data,
+        },
       );
+
+      const result = await response.json();
+      if (result?.Message === 'Success' && Array.isArray(result?.Data)) {
+        const updatedProfiles = { ...profileMap };
+        result.Data.forEach(item => {
+          if (item.ClientMobileNumber && item.ProfileName) {
+            updatedProfiles[item.ClientMobileNumber] = item.ProfileName;
+          }
+        });
+        setProfileMap(updatedProfiles);
+        await AsyncStorage.setItem(
+          'profileMap',
+          JSON.stringify(updatedProfiles),
+        );
+        console.log('✅ Profile map merged and cached successfully');
+      } else {
+        console.log('⚠️ No valid data found in GetUserProfileName');
+      }
+    } catch (err) {
+      console.error('Error fetching profile names:', err);
+    }
+  }, [user]);
+
+  // --- Load profile cache & fetch ---
+  useEffect(() => {
+    (async () => {
+      const cachedProfiles = await AsyncStorage.getItem('profileMap');
+      if (cachedProfiles) {
+        setProfileMap(JSON.parse(cachedProfiles));
+        console.log('Loaded cached profile map');
+      }
+      await fetchProfileNames();
+    })();
+  }, [fetchProfileNames]);
+
+  // --- WebSocket Setup ---
+  const setupWebSocket = useCallback(() => {
+    if (!user || !user.WhatsAppSenderID) {
+      console.log('User not ready for WS');
       return;
     }
 
-    console.log('Setting up WebSocket with sender:', user.WhatsAppSenderID);
-
-    // Close existing WebSocket if it exists
     closeWebSocket(ws, reconnectTimeoutRef).then(() => {
       const wsUrl = `wss://www.loadcrm.com/whatsappwebsocket/ws/global?senderNumber=${user.WhatsAppSenderID}&sysIpAddress=192.168.1.100&user=app`;
-      console.log('Connecting to WS URL:', wsUrl);
       ws.current = new WebSocket(wsUrl);
 
       ws.current.onopen = () => {
         console.log('Global WebSocket Connected successfully');
-        setIsConnected(true); // Update status to connected
+        setIsConnected(true);
       };
 
       ws.current.onmessage = e => {
         try {
           const msg = JSON.parse(e.data);
-          console.log('Received WS message:', msg);
-
-          // Skip connection messages
-          if (
-            msg.type === 'connectionReplaced' ||
-            msg.type === 'connectionEstablished'
-          ) {
-            console.log('Skipping connection message');
-            return;
-          }
-
-          // Handle new received message
           if (msg.Mode === 'Received' && msg.ClientMobileno) {
-            console.log(
-              'Processing new received message for mobile:',
-              msg.ClientMobileno,
-            );
-            setContactList(prevContactList => {
-              const mobileNo = msg.ClientMobileno;
-              const updatedChats = { ...prevContactList };
-
-              if (!updatedChats[mobileNo]) {
-                updatedChats[mobileNo] = [];
-              }
-
-              // Check if message already exists (by id or Uid)
-              const messageId = msg.id || msg.Uid;
-              const exists = updatedChats[mobileNo].some(
-                chat => (chat.id || chat.Uid) === messageId,
-              );
-              if (!exists) {
-                updatedChats[mobileNo].push(msg);
-                console.log('Added new message to contact list for:', mobileNo);
-              } else {
-                console.log(
-                  'Message already exists, skipping add for:',
-                  mobileNo,
-                );
-              }
-
-              // Update cache
-              AsyncStorage.setItem('ownChats', JSON.stringify(updatedChats));
-
-              return updatedChats;
+            setContactList(prev => {
+              const mobile = msg.ClientMobileno;
+              const updated = { ...prev };
+              if (!updated[mobile]) updated[mobile] = [];
+              const id = msg.id || msg.Uid;
+              const exists = updated[mobile].some(c => (c.id || c.Uid) === id);
+              if (!exists) updated[mobile].push(msg);
+              AsyncStorage.setItem('ownChats', JSON.stringify(updated));
+              return updated;
             });
-
-            // Increment unread count
             setUnreadCounts(prev => ({
               ...prev,
               [msg.ClientMobileno]: (prev[msg.ClientMobileno] || 0) + 1,
             }));
-            console.log('Incremented unread count for:', msg.ClientMobileno);
-          } else {
-            console.log(
-              'Ignoring non-received message or missing ClientMobileno',
-            );
           }
         } catch (err) {
-          console.error('WebSocket parsing error:', err);
+          console.error('WS parsing error:', err);
         }
       };
 
       ws.current.onerror = err => {
-        console.error('Global WebSocket connection error occurred:', err);
-        setIsConnected(false); // Update status to disconnected on error
+        console.error('WebSocket error:', err);
+        setIsConnected(false);
       };
 
       ws.current.onclose = e => {
-        console.warn(
-          'Global WebSocket Closed. Code:',
-          e.code,
-          'Reason:',
-          e.reason,
-        );
-        setIsConnected(false); // Update status to disconnected
+        console.warn('Global WebSocket Closed:', e.code, e.reason);
+        setIsConnected(false);
         ws.current = null;
         if (e.code !== 1000 && !reconnectTimeoutRef.current) {
-          console.log('Scheduling reconnection in 3s...');
-          reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('Attempting Global WebSocket reconnection...');
-            setupWebSocket();
-          }, 3000);
+          reconnectTimeoutRef.current = setTimeout(setupWebSocket, 3000);
         }
       };
     });
   }, [user]);
+
   useEffect(() => {
-    if (authenticated && user && user?.WhatsAppSenderID) {
-      setupWebSocket();
-    } else {
-      console.log('Skipping WebSocket setup, user or WhatsAppSenderID missing');
-    }
-
-    return () => {
-      closeWebSocket(ws, reconnectTimeoutRef);
-    };
+    if (authenticated && user?.WhatsAppSenderID) setupWebSocket();
+    return () => closeWebSocket(ws, reconnectTimeoutRef);
   }, [setupWebSocket, authenticated, user]);
-  // useEffect(() => {
-  //   if (authenticated && user) {
-  //     setupWebSocket();
-  //   }
-  //   // Cleanup on unmount
-  //   return () => {
-  //     closeWebSocket(ws, reconnectTimeoutRef);
-  //   };
-  // }, [setupWebSocket, authenticated, user]);
 
-  const loadChats = useCallback(async (forceRefresh = false) => {
-    console.log('Loading chats, forceRefresh:', forceRefresh);
+  // --- Load Chats API ---
+  const loadChats = useCallback(async (force = false) => {
     try {
-      if (!forceRefresh) {
-        const cachedChats = await AsyncStorage.getItem('ownChats');
-        if (cachedChats) {
-          console.log('Loaded from cache');
-          setContactList(JSON.parse(cachedChats));
+      if (!force) {
+        const cached = await AsyncStorage.getItem('ownChats');
+        if (cached) {
+          setContactList(JSON.parse(cached));
           setIsLoading(false);
         }
       }
-
       const userStr = await AsyncStorage.getItem('user');
-      if (!userStr) {
-        console.log('No user in AsyncStorage, skipping API call');
-        return;
-      }
+      if (!userStr) return;
       const { WhatsAppSenderID, LoginID } = JSON.parse(userStr);
-      console.log('Using senderID from storage:', WhatsAppSenderID);
-
       const url = `${API_URL}/GetOwnChatForLogID?senderNo=${WhatsAppSenderID}&LoginId=${LoginID}&date=`;
-      console.log('Fetching from URL:', url);
-      const response = await fetch(url, { method: 'POST' });
-      const result = await response.json();
-      console.log('API Response:', result);
-
+      const res = await fetch(url, { method: 'POST' });
+      const result = await res.json();
       if (result && Array.isArray(result.Data)) {
-        const newRawDataString = JSON.stringify(result.Data);
-        const oldRawDataString = await AsyncStorage.getItem('rawOwnChats');
-
-        if (newRawDataString !== oldRawDataString || forceRefresh) {
-          console.log('Data changed or force refresh, updating...');
-          const groupedChats = groupChatsByMobileNo(result.Data);
-          setContactList(groupedChats);
-          await AsyncStorage.setItem('ownChats', JSON.stringify(groupedChats));
-          await AsyncStorage.setItem('rawOwnChats', newRawDataString);
-        } else {
-          console.log('No data change, skipping update');
-        }
+        const grouped = groupChatsByMobileNo(result.Data);
+        setContactList(grouped);
+        await AsyncStorage.setItem('ownChats', JSON.stringify(grouped));
       }
-    } catch (error) {
-      console.error('Error fetching OwnChat API:', error);
+    } catch (err) {
+      console.error('Error loading chats:', err);
     } finally {
       setIsLoading(false);
     }
@@ -969,48 +931,43 @@ const OwnChat = ({ navigation }) => {
     loadChats();
   }, [loadChats]);
 
+  // --- Refresh Handler ---
   const handleRefresh = useCallback(async () => {
-    console.log('Manual refresh triggered');
     setIsRefreshing(true);
     await loadChats(true);
+    await fetchProfileNames();
     setIsRefreshing(false);
-  }, [loadChats]);
+  }, [loadChats, fetchProfileNames]);
 
+  // --- Derived Data ---
   const sortedContactArray = useMemo(() => {
-    const contactArray = Object.keys(contactList).map(number => {
+    const arr = Object.keys(contactList).map(number => {
       const chats = contactList[number];
-      const latestChat = chats.reduce((latest, current) =>
-        new Date(latest.ProcessDate) > new Date(current.ProcessDate)
-          ? latest
-          : current,
+      const latest = chats.reduce((a, b) =>
+        new Date(a.ProcessDate) > new Date(b.ProcessDate) ? a : b,
       );
       return {
         number,
-        profileName: latestChat.ProfileName || '',
-        lastMessage: latestChat.MessageText?.slice(0, 40) || 'Attachment',
-        lastDate: latestChat.ProcessDate
-          ? new Date(latestChat.ProcessDate)
-          : null,
+        profileName: latest.ProfileName || profileMap[number] || '',
+        lastMessage: latest.MessageText?.slice(0, 40) || 'Attachment',
+        lastDate: latest.ProcessDate ? new Date(latest.ProcessDate) : null,
         chats,
         unread: unreadCounts[number] || 0,
       };
     });
-    return contactArray
-      .map(chat => ({
-        ...chat,
-        lastDateLabel: getDateLabel(chat.lastDate),
-      }))
+    return arr
+      .map(c => ({ ...c, lastDateLabel: getDateLabel(c.lastDate) }))
       .sort((a, b) => (b.lastDate || 0) - (a.lastDate || 0));
-  }, [contactList, unreadCounts]);
+  }, [contactList, unreadCounts, profileMap]);
 
   const filteredContacts = useMemo(() => {
     if (!search) return sortedContactArray;
     return sortedContactArray.filter(
-      chat =>
-        chat.number.includes(search) ||
-        (chat.profileName &&
-          chat.profileName.toLowerCase().includes(search.toLowerCase())) ||
-        chat.lastMessage.toLowerCase().includes(search.toLowerCase()),
+      c =>
+        c.number.includes(search) ||
+        (c.profileName &&
+          c.profileName.toLowerCase().includes(search.toLowerCase())) ||
+        c.lastMessage.toLowerCase().includes(search.toLowerCase()),
     );
   }, [sortedContactArray, search]);
 
@@ -1023,7 +980,6 @@ const OwnChat = ({ navigation }) => {
   const navigateToChat = useCallback(
     item => {
       setUnreadCounts(prev => ({ ...prev, [item.number]: 0 }));
-      console.log('Marked as read for:', item.number);
       navigation.navigate('ChatScreen', {
         number: item.number,
         chats: item.chats,
@@ -1039,9 +995,9 @@ const OwnChat = ({ navigation }) => {
     [navigateToChat],
   );
 
+  // --- UI ---
   return (
     <View style={styles.container}>
-      {/* WebSocket Status Bar */}
       <View
         style={[
           styles.statusBar,
@@ -1056,11 +1012,7 @@ const OwnChat = ({ navigation }) => {
       <TopBar
         title="Own Chats"
         onLogoutPress={() => setShowModal(true)}
-        onRefreshPress={async () => {
-          setIsLoading(true);
-          await handleRefresh();
-          setIsLoading(false);
-        }}
+        onRefreshPress={handleRefresh}
       />
 
       {/* Search Section */}
@@ -1075,10 +1027,9 @@ const OwnChat = ({ navigation }) => {
           <TextInput
             style={styles.searchInput}
             placeholder="Search"
-            placeholderTextColor={'#888'}
+            placeholderTextColor="#888"
             value={search}
             onChangeText={setSearch}
-            inputMode="search"
           />
           {search?.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
@@ -1092,7 +1043,7 @@ const OwnChat = ({ navigation }) => {
           )}
         </View>
       </View>
-      {/* Loader Integration */}
+
       {isLoading ? (
         <View style={styles.loaderWrapper}>
           <WhatsAppLoaders type="dots" color={COLORS.light.primary} />
@@ -1119,12 +1070,7 @@ const OwnChat = ({ navigation }) => {
       )}
 
       {/* Logout Modal */}
-      <Modal
-        visible={showModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowModal(false)}
-      >
+      <Modal visible={showModal} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Feather
@@ -1166,11 +1112,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statusText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
+  statusText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
   searchContainer: { paddingHorizontal: 16, marginBottom: 4 },
   searchRow: {
     flexDirection: 'row',
@@ -1181,10 +1123,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   searchIconWrap: { paddingHorizontal: 8 },
-  clearIcon: {
-    paddingHorizontal: 8,
-    opacity: 0.8,
-  },
+  clearIcon: { paddingHorizontal: 8, opacity: 0.8 },
   searchInput: { flex: 1, fontSize: 16, color: theme.black },
   item: {
     flexDirection: 'row',
@@ -1195,9 +1134,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderColor: '#eee',
   },
-  unreadItem: {
-    backgroundColor: '#D5F0C0',
-  },
+  unreadItem: { backgroundColor: '#E0E0E0' },
   avatar: {
     width: 50,
     height: 50,
@@ -1220,65 +1157,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  unreadBadgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  unreadTextBold: {
-    fontWeight: 'bold',
-    color: '#000',
-  },
+  unreadBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+  unreadTextBold: { fontWeight: 'bold', color: '#000' },
   chatInfo: { flex: 1 },
   chatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  contactNameContainer: {
-    flex: 1,
-    flexDirection: 'column',
-  },
+  contactNameContainer: { flex: 1, flexDirection: 'column' },
   profileName: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#222',
     marginBottom: 2,
   },
-  number: {
-    fontSize: 14,
-    color: '#666',
-  },
+  number: { fontSize: 14, color: '#666' },
   lastMessage: { fontSize: 14, color: '#666', marginTop: 2 },
   lastDate: { fontSize: 12, color: '#888', textAlign: 'right' },
-  loaderWrapper: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  loaderWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 24,
-    width: 280,
+    width: '80%',
+    padding: 20,
+    borderRadius: 10,
     alignItems: 'center',
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
   modalSubtitle: {
-    color: '#666',
-    fontSize: 15,
-    marginBottom: 18,
+    fontSize: 14,
     textAlign: 'center',
+    color: '#555',
+    marginBottom: 16,
   },
   modalActions: {
     flexDirection: 'row',
@@ -1287,13 +1203,13 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     flex: 1,
-    alignItems: 'center',
+    marginHorizontal: 5,
+    borderRadius: 6,
     paddingVertical: 10,
-    borderRadius: 8,
-    marginHorizontal: 4,
+    alignItems: 'center',
   },
-  cancelText: { color: '#555', fontSize: 16, fontWeight: 'bold' },
-  logoutText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  cancelText: { color: '#333', fontWeight: 'bold' },
+  logoutText: { color: '#fff', fontWeight: 'bold' },
 });
 
 export default OwnChat;
