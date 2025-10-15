@@ -25,13 +25,42 @@ import TopBar from '../Components/TopBar';
 import WhatsAppLoaders from '../Components/WhatsAppLoaders';
 import { COLORS } from '../Constants/Colors';
 import { useRoute, useFocusEffect } from '@react-navigation/native';
-import Footer from '../Components/Footer';
+
+// Utility to close WebSocket with a promise
+const closeWebSocket = (wsRef, reconnectTimeoutRef) => {
+  return new Promise(resolve => {
+    if (wsRef.current) {
+      wsRef.current.onclose = () => {
+        console.log('Global WebSocket closed successfully');
+        wsRef.current = null;
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
+        resolve();
+      };
+      wsRef.current.onerror = () => {
+        console.error('Global WebSocket error during closure');
+        wsRef.current = null;
+        resolve();
+      };
+      wsRef.current.close();
+    } else {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      resolve();
+    }
+  });
+};
 
 // --- Utility Functions ---
 const pad = n => (n < 10 ? '0' + n : n);
 
 const colorScheme = Appearance.getColorScheme();
 const theme = colorScheme === 'dark' ? COLORS.dark : COLORS.light;
+
 function getDateLabel(date) {
   if (!(date instanceof Date) || isNaN(date)) return '';
   const today = new Date();
@@ -118,148 +147,128 @@ const OwnChat = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const route = useRoute();
 
-  // Refresh screen automatically when navigated back from TemplateCard
-  useFocusEffect(
-    useCallback(() => {
-      if (route.params?.refresh) {
-        console.log('Auto-refresh triggered from TemplateCard 🚀');
-        handleRefresh();
-        navigation.setParams({ refresh: false });
-      }
-    }, [route.params?.refresh]),
-  );
   const { user, logout, authenticated } = useContext(UserContext);
   const ws = useRef(null);
   const reconnectTimeoutRef = useRef(null);
 
-  console.log('contactList', contactList);
   console.log('Current user from context:', user);
 
   const setupWebSocket = useCallback(() => {
-    // Guard: Skip if user is not ready
-    if (!user?.WhatsAppSenderID) {
+    // Guard: Skip if user or WhatsAppSenderID is not ready
+    if (!user || !user.WhatsAppSenderID) {
       console.log(
-        'User not ready (WhatsAppSenderID missing), skipping WS setup',
+        'User or WhatsAppSenderID not ready, skipping WebSocket setup',
+        { user },
       );
       return;
     }
 
     console.log('Setting up WebSocket with sender:', user.WhatsAppSenderID);
 
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      console.log('WebSocket already connected, skipping setup');
-      return;
-    }
+    // Close existing WebSocket if it exists
+    closeWebSocket(ws, reconnectTimeoutRef).then(() => {
+      const wsUrl = `wss://www.loadcrm.com/whatsappwebsocket/ws/global?senderNumber=${user.WhatsAppSenderID}&sysIpAddress=192.168.1.100&user=app`;
+      console.log('Connecting to WS URL:', wsUrl);
+      ws.current = new WebSocket(wsUrl);
 
-    if (ws.current) {
-      console.log('Closing existing WebSocket before reconnect');
-      ws.current.close();
-      ws.current = null;
-    }
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
+      ws.current.onopen = () => {
+        console.log('Global WebSocket Connected successfully');
+      };
 
-    const wsUrl = `wss://www.loadcrm.com/whatsappwebsocket/ws/global?senderNumber=${user.WhatsAppSenderID}&sysIpAddress=192.168.1.100&user=app`;
-    console.log('Connecting to WS URL:', wsUrl);
-    ws.current = new WebSocket(wsUrl);
+      ws.current.onmessage = e => {
+        try {
+          const msg = JSON.parse(e.data);
+          console.log('Received WS message:', msg);
 
-    ws.current.onopen = () => {
-      console.log('Global WebSocket Connected successfully');
-    };
+          // Skip connection messages
+          if (
+            msg.type === 'connectionReplaced' ||
+            msg.type === 'connectionEstablished'
+          ) {
+            console.log('Skipping connection message');
+            return;
+          }
 
-    ws.current.onmessage = e => {
-      try {
-        const msg = JSON.parse(e.data);
-        console.log('Received WS message:', msg);
-
-        // Skip connection messages
-        if (
-          msg.type === 'connectionReplaced' ||
-          msg.type === 'connectionEstablished'
-        ) {
-          console.log('Skipping connection message');
-          return;
-        }
-
-        // Handle new received message
-        if (msg.Mode === 'Received' && msg.ClientMobileno) {
-          console.log(
-            'Processing new received message for mobile:',
-            msg.ClientMobileno,
-          );
-          setContactList(prevContactList => {
-            const mobileNo = msg.ClientMobileno;
-            const updatedChats = { ...prevContactList };
-
-            if (!updatedChats[mobileNo]) {
-              updatedChats[mobileNo] = [];
-            }
-
-            // Check if message already exists (by id or Uid)
-            const messageId = msg.id || msg.Uid;
-            const exists = updatedChats[mobileNo].some(
-              chat => (chat.id || chat.Uid) === messageId,
+          // Handle new received message
+          if (msg.Mode === 'Received' && msg.ClientMobileno) {
+            console.log(
+              'Processing new received message for mobile:',
+              msg.ClientMobileno,
             );
-            if (!exists) {
-              updatedChats[mobileNo].push(msg);
-              console.log('Added new message to contact list for:', mobileNo);
-            } else {
-              console.log(
-                'Message already exists, skipping add for:',
-                mobileNo,
+            setContactList(prevContactList => {
+              const mobileNo = msg.ClientMobileno;
+              const updatedChats = { ...prevContactList };
+
+              if (!updatedChats[mobileNo]) {
+                updatedChats[mobileNo] = [];
+              }
+
+              // Check if message already exists (by id or Uid)
+              const messageId = msg.id || msg.Uid;
+              const exists = updatedChats[mobileNo].some(
+                chat => (chat.id || chat.Uid) === messageId,
               );
-            }
+              if (!exists) {
+                updatedChats[mobileNo].push(msg);
+                console.log('Added new message to contact list for:', mobileNo);
+              } else {
+                console.log(
+                  'Message already exists, skipping add for:',
+                  mobileNo,
+                );
+              }
 
-            // Update cache
-            AsyncStorage.setItem('ownChats', JSON.stringify(updatedChats));
+              // Update cache
+              AsyncStorage.setItem('ownChats', JSON.stringify(updatedChats));
 
-            return updatedChats;
-          });
+              return updatedChats;
+            });
 
-          // Increment unread count
-          setUnreadCounts(prev => ({
-            ...prev,
-            [msg.ClientMobileno]: (prev[msg.ClientMobileno] || 0) + 1,
-          }));
-          console.log('Incremented unread count for:', msg.ClientMobileno);
-        } else {
-          console.log(
-            'Ignoring non-received message or missing ClientMobileno',
-          );
+            // Increment unread count
+            setUnreadCounts(prev => ({
+              ...prev,
+              [msg.ClientMobileno]: (prev[msg.ClientMobileno] || 0) + 1,
+            }));
+            console.log('Incremented unread count for:', msg.ClientMobileno);
+          } else {
+            console.log(
+              'Ignoring non-received message or missing ClientMobileno',
+            );
+          }
+        } catch (err) {
+          console.error('WebSocket parsing error:', err);
         }
-      } catch (err) {
-        console.error('WebSocket parsing error:', err);
-      }
-    };
+      };
 
-    ws.current.onerror = err => {
-      console.error('Global WebSocket connection error occurred:', err);
-    };
+      ws.current.onerror = err => {
+        console.error('Global WebSocket connection error occurred:', err);
+      };
 
-    ws.current.onclose = e => {
-      console.warn(
-        'Global WebSocket Closed. Code:',
-        e.code,
-        'Reason:',
-        e.reason,
-      );
-      ws.current = null;
-      if (e.code !== 1000 && !reconnectTimeoutRef.current) {
-        console.log('Scheduling reconnection in 3s...');
-        reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('Attempting Global WebSocket reconnection...');
-          setupWebSocket();
-        }, 3000);
-      }
-    };
-  }, [user?.WhatsAppSenderID]);
+      ws.current.onclose = e => {
+        console.warn(
+          'Global WebSocket Closed. Code:',
+          e.code,
+          'Reason:',
+          e.reason,
+        );
+        ws.current = null;
+        if (e.code !== 1000 && !reconnectTimeoutRef.current) {
+          console.log('Scheduling reconnection in 3s...');
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('Attempting Global WebSocket reconnection...');
+            setupWebSocket();
+          }, 3000);
+        }
+      };
+    });
+  }, [user]);
 
   useEffect(() => {
-    setupWebSocket();
-    // No cleanup here - WS persists across navigation
-  }, [setupWebSocket]);
+    if (authenticated && user) {
+      setupWebSocket();
+    }
+    // No cleanup to keep WebSocket persistent
+  }, [setupWebSocket, authenticated, user]);
 
   const loadChats = useCallback(async (forceRefresh = false) => {
     console.log('Loading chats, forceRefresh:', forceRefresh);
@@ -359,15 +368,8 @@ const OwnChat = ({ navigation }) => {
 
   const handleLogout = async () => {
     setShowModal(false);
-    // Close WS before logout
-    if (ws.current) {
-      console.log('Closing WebSocket on logout');
-      ws.current.close();
-      ws.current = null;
-    }
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-    }
+    // Close WebSocket before logout
+    await closeWebSocket(ws, reconnectTimeoutRef);
     await logout(navigation);
   };
 
@@ -412,7 +414,6 @@ const OwnChat = ({ navigation }) => {
             color="#888"
             style={styles.searchIconWrap}
           />
-
           <TextInput
             style={styles.searchInput}
             placeholder="Search"
