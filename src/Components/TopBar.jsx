@@ -55,10 +55,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 20,
+    height: 20,
+    borderRadius: 50,
     marginRight: 14,
+    borderWidth: 3,
+    borderColor: '#C4C4C4',
   },
   iconButton: {
     padding: 5,

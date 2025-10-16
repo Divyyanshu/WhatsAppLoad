@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderColor: '#eee',
   },
-  unreadItem: { backgroundColor: '#E0E0E0' },
+  unreadItem: { backgroundColor: '#E6FFE6' },
   avatar: {
     width: 50,
     height: 50,
