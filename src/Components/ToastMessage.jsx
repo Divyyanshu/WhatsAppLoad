@@ -1,56 +1,110 @@
-import React, { useEffect } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text } from 'react-native';
+import Feather from 'react-native-vector-icons/Feather';
 
-const ToastMessage = ({ message, visible, onHide, duration = 2000 }) => {
-  const opacity = React.useRef(new Animated.Value(0)).current;
+const ToastMessage = ({
+  message,
+  visible,
+  onHide,
+  duration = 2000,
+  type = 'info',
+}) => {
+  const slideAnim = useRef(new Animated.Value(-100)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  const getToastStyle = () => {
+    switch (type) {
+      case 'success':
+        return { backgroundColor: '#22c55e', icon: 'check-circle' };
+      case 'error':
+        return { backgroundColor: '#ef4444', icon: 'x-circle' };
+      case 'warning':
+        return { backgroundColor: '#facc15', icon: 'alert-triangle' };
+      default:
+        return { backgroundColor: '#3b82f6', icon: 'info' };
+    }
+  };
+
+  const { backgroundColor, icon } = getToastStyle();
 
   useEffect(() => {
     if (visible) {
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-
-      const timer = setTimeout(() => {
-        Animated.timing(opacity, {
-          toValue: 0,
-          duration: 300,
+      // Slide down + fade in
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 60,
+          duration: 350,
           useNativeDriver: true,
-        }).start(() => onHide && onHide());
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Auto hide after duration
+      const timer = setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(slideAnim, {
+            toValue: -100,
+            duration: 350,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 0,
+            duration: 350,
+            useNativeDriver: true,
+          }),
+        ]).start(() => onHide && onHide());
       }, duration);
 
       return () => clearTimeout(timer);
     }
-  }, [visible, duration, onHide, opacity]);
+  }, [visible, duration, onHide, slideAnim, opacity]);
 
   if (!visible) return null;
 
   return (
-    <Animated.View style={[styles.toast, { opacity }]}>
+    <Animated.View
+      style={[
+        styles.toastContainer,
+        { backgroundColor, opacity, transform: [{ translateY: slideAnim }] },
+      ]}
+    >
+      <Feather name={icon} size={20} color="#fff" style={styles.icon} />
       <Text style={styles.toastText}>{message}</Text>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  toast: {
+  toastContainer: {
     position: 'absolute',
-    bottom: 50,
-    left: 30,
-    right: 30,
-    backgroundColor: '#222',
-    paddingVertical: 4,
-    paddingHorizontal: 20,
-    borderRadius: 20,
+    top: 50,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6,
     zIndex: 9999,
-    elevation: 10,
   },
   toastText: {
     color: '#fff',
-    fontSize: 16,
-    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '500',
+    flex: 1,
+    textAlign: 'left',
+  },
+  icon: {
+    marginRight: 8,
   },
 });
 

@@ -36,15 +36,16 @@ const LoginScreen = () => {
   const [password, setPassword] = useState('trial@1234');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const [toast, setToast] = useState({ visible: false, message: '' });
+  const [toast, setToast] = useState({ visible: false, message: '', type: '' });
   const [loading, setLoading] = useState(false);
   const [forgotModalVisible, setForgotModalVisible] = useState(false);
 
   const navigation = useNavigation();
   const { setUser } = useContext(UserContext);
 
-  const showToast = msg => setToast({ visible: true, message: msg });
-  const hideToast = () => setToast({ visible: false, message: '' });
+  const showToast = (msg, type = 'info') =>
+    setToast({ visible: true, message: msg, type });
+  const hideToast = () => setToast({ visible: false, message: '', type: '' });
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', () =>
@@ -60,8 +61,8 @@ const LoginScreen = () => {
   }, []);
 
   const handleLogin = async () => {
-    if (!username) return showToast('Please enter username');
-    if (!password) return showToast('Please enter password');
+    if (!username) return showToast('Please enter username', 'warning');
+    if (!password) return showToast('Please enter password', 'warning');
 
     setLoading(true);
 
@@ -78,12 +79,22 @@ const LoginScreen = () => {
         const userData = result.Data[0];
         await AsyncStorage.setItem('user', JSON.stringify(userData));
         setUser(userData);
-        navigation.replace('OwnChat', { username, userData });
+        showToast('Login successful', 'success');
+        setTimeout(() => {
+          navigation.replace('OwnChat', { username, userData });
+        }, 800);
       } else {
-        showToast(result.Data || 'Invalid credentials');
+        // Handle different error messages
+        if (result.Data === 'Invalid Password') {
+          showToast('Incorrect password. Please try again.', 'error');
+        } else if (result.Data === 'Invalid Username') {
+          showToast('Username not found. Please check again.', 'error');
+        } else {
+          showToast(result.Data || 'Invalid credentials.', 'error');
+        }
       }
     } catch (error) {
-      showToast('Something went wrong. Please try again.');
+      showToast('Something went wrong. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -156,7 +167,8 @@ const LoginScreen = () => {
                 message={toast.message}
                 visible={toast.visible}
                 onHide={hideToast}
-                duration={600}
+                duration={900}
+                type={toast.type}
               />
             </View>
 

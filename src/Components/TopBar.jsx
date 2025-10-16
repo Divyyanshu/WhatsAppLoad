@@ -1,35 +1,25 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
-import { COLORS } from '../Constants/Colors';
-import { useNavigation } from '@react-navigation/native';
 
-const TopBar = ({ title = 'Own Chats', onLogoutPress, onRefreshPress }) => {
-  const navigation = useNavigation();
-
-  // const myScreeenNavigate = () => {
-  //   navigation.navigate('MyScreen');
-  // };
-
+const TopBar = ({ title = 'Own Chats', onLogoutPress, isConnected }) => {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
+        {/* Title Section */}
         <Text style={styles.header}>{title}</Text>
+
+        {/* Icons Section */}
         <View style={styles.iconsRow}>
-          {/* <TouchableOpacity
-            style={styles.iconButton}
-            onPress={myScreeenNavigate}
-          >
-            <Feather name="divide-square" size={24} color={COLORS.dark.black} />
-          </TouchableOpacity> */}
-          {onRefreshPress && (
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={onRefreshPress}
-            >
-              <Feather name="refresh-cw" size={24} color="#408AC7" />
-            </TouchableOpacity>
-          )}
+          {/* Connection Status Dot */}
+          <View
+            style={[
+              styles.statusDot,
+              { backgroundColor: isConnected ? '#4CAF50' : '#F44336' },
+            ]}
+          />
+
+          {/* Logout Icon */}
           {onLogoutPress && (
             <TouchableOpacity style={styles.iconButton} onPress={onLogoutPress}>
               <Feather name="log-out" size={24} color="#D32F2F" />
@@ -51,7 +41,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     paddingHorizontal: 10,
-    borderBottomWidth: 0.2,
+    borderBottomWidth: 0.3,
     borderBottomColor: '#ccc',
   },
   header: {
@@ -64,9 +54,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  statusDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    marginRight: 14,
+  },
   iconButton: {
     padding: 5,
-    marginLeft: 12,
   },
 });
 
