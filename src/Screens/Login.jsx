@@ -78,13 +78,13 @@ const LoginScreen = () => {
       if (result.Message === 'Success' && result.Data?.length > 0) {
         const userData = result.Data[0];
         await AsyncStorage.setItem('user', JSON.stringify(userData));
+        console.log('userdata >>>>>', userData);
         setUser(userData);
         showToast('Login successful', 'success');
         setTimeout(() => {
           navigation.replace('OwnChat', { username, userData });
         }, 800);
       } else {
-        // Handle different error messages
         if (result.Data === 'Invalid Password') {
           showToast('Incorrect password. Please try again.', 'error');
         } else if (result.Data === 'Invalid Username') {

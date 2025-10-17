@@ -1078,6 +1078,7 @@ import { API_URL } from '../config';
 import Video from 'react-native-video';
 import * as ImagePicker from 'react-native-image-picker';
 import { pick, isCancel } from '@react-native-documents/picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function flattenChatsByDate(chats) {
   const groups = {};
@@ -1247,7 +1248,6 @@ const ChatScreen = ({ route }) => {
   const wsUrl = `wss://www.loadcrm.com/whatsappwebsocket/ws/chat?senderNumber=${user.WhatsAppSenderID}&receiverNumber=${number}&sysIpAddress=192.168.1.100&user=app`;
 
   const setupWebSocket = useCallback(() => {
-    // Close existing WebSocket before setting up a new one
     closeWebSocket(ws, reconnectTimeoutRef).then(() => {
       ws.current = new WebSocket(wsUrl);
 
@@ -1500,17 +1500,22 @@ const ChatScreen = ({ route }) => {
         metaData: { version: 'v1.0.9' },
       };
 
-      const sendRes = await fetch(
-        'https://rcmapi.instaalerts.zone/services/rcm/sendMessage',
-        {
-          method: 'POST',
-          headers: {
-            Authentication: `Bearer ${bearerToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payloadForMid),
+      const userStr = await AsyncStorage.getItem('user');
+      const userData = userStr ? JSON.parse(userStr) : null;
+      const apiCategory = userData?.ApiCategory;
+      const apiUrl =
+        apiCategory && apiCategory.toLowerCase().includes('tsp')
+          ? 'https://tsp-rcmapi.instaalerts.zone/services/rcm/sendMessage'
+          : 'https://rcmapi.instaalerts.zone/services/rcm/sendMessage';
+      console.log('Selected API URL:', apiUrl);
+      const sendRes = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          Authentication: `Bearer ${bearerToken}`,
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify(payloadForMid),
+      });
 
       if (!sendRes.ok)
         throw new Error(`Send message failed: ${sendRes.status}`);

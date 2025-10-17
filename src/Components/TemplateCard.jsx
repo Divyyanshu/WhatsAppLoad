@@ -21,6 +21,7 @@ import AuthenticatedPdfViewer from './AuthenticatedPdfViewer.jsx';
 import Pdf from 'react-native-pdf';
 import { useNavigation } from '@react-navigation/native';
 import WhatsAppLoaders from './WhatsAppLoaders.jsx';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TemplateCard = ({ template, recipientNumber }) => {
   const {
@@ -144,20 +145,22 @@ const TemplateCard = ({ template, recipientNumber }) => {
       };
 
       console.log('Sending payload:', JSON.stringify(payload, null, 2));
-
-      // Step 3: Send the message via API
-      const sendRes = await fetch(
-        'https://rcmapi.instaalerts.zone/services/rcm/sendMessage',
-        {
-          method: 'POST',
-          headers: {
-            Authentication: `Bearer ${bearerToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
+      const userStr = await AsyncStorage.getItem('user');
+      const userData = userStr ? JSON.parse(userStr) : null;
+      const apiCategory = userData?.ApiCategory;
+      const apiUrl =
+        apiCategory && apiCategory.toLowerCase().includes('tsp')
+          ? 'https://tsp-rcmapi.instaalerts.zone/services/rcm/sendMessage'
+          : 'https://rcmapi.instaalerts.zone/services/rcm/sendMessage';
+      console.log('Selected API URL:', apiUrl);
+      const sendRes = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          Authentication: `Bearer ${bearerToken}`,
+          'Content-Type': 'application/json',
         },
-      );
-      // if(sendRes.ok) ToastMessage(`Template ${fullTemplate.TemplateType} sent successfully to ${to}`);
+        body: JSON.stringify(payload),
+      });
       if (!sendRes.ok)
         throw new Error(`Send message failed with status: ${sendRes.status}`);
       const result = await sendRes.json();
@@ -177,11 +180,7 @@ const TemplateCard = ({ template, recipientNumber }) => {
           attachmentName: mediaType,
           messageType: msg_type,
         };
-
-        // ✅ inside sendMessageApi after saveSentMessage:
         await saveSentMessage(messageDetailsToSave);
-
-        // ✅ navigate cleanly without stacking
         navigation.replace('ChatScreen', { number: to, refresh: true });
       } else {
         throw new Error('Message sending was not accepted by the API.');
