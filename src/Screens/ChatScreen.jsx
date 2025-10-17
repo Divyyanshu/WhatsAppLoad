@@ -291,28 +291,24 @@ const ChatScreen = ({ route }) => {
   useEffect(() => {
     setupWebSocket();
     return () => {
-      // Cleanup on component unmount
       closeWebSocket(ws, reconnectTimeoutRef);
     };
   }, [setupWebSocket]);
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
-        // Ensure clean WebSocket closure before navigating
         closeWebSocket(ws, reconnectTimeoutRef).then(() => {
           if (navigation.canGoBack()) {
             navigation.navigate('OwnChat');
           }
         });
-        return true; // prevent default back behavior
+        return true;
       };
 
       const subscription = BackHandler.addEventListener(
         'hardwareBackPress',
         onBackPress,
       );
-
-      // Cleanup on unmount or blur
       return () => {
         subscription.remove();
         closeWebSocket(ws, reconnectTimeoutRef);
@@ -320,7 +316,6 @@ const ChatScreen = ({ route }) => {
     }, [navigation]),
   );
 
-  // Auto scroll to bottom on new messages
   useEffect(() => {
     if (chats.length > prevChatsLength.current && !isLoadingOlder) {
       setTimeout(() => {
@@ -577,7 +572,6 @@ const ChatScreen = ({ route }) => {
         } else {
           const uri = response.assets[0].uri;
           console.log('Gallery selected: ', uri);
-          // TODO: Implement send image attachment logic here (upload to server, get Imagepath, then send via RCM API similar to text)
         }
       },
     );
@@ -598,7 +592,6 @@ const ChatScreen = ({ route }) => {
         } else {
           const uri = response.assets[0].uri;
           console.log('Video selected: ', uri);
-          // TODO: Implement send video attachment logic here (upload to server, get Imagepath, set Attachement_Type: 'video')
         }
       },
     );
@@ -616,7 +609,6 @@ const ChatScreen = ({ route }) => {
         copyTo: 'cachesDirectory',
       });
       console.log('Document selected: ', res.uri);
-      // TODO: Implement send document attachment logic here (upload to server, get Imagepath, set Attachement_Type: 'document')
     } catch (err) {
       if (isCancel(err)) {
         console.log('User cancelled document');
@@ -634,7 +626,6 @@ const ChatScreen = ({ route }) => {
         copyTo: 'cachesDirectory',
       });
       console.log('Audio selected: ', res.uri);
-      // TODO: Implement send audio attachment logic here (upload to server, get Imagepath, set Attachement_Type: 'audio')
     } catch (err) {
       if (isCancel(err)) {
         console.log('User cancelled audio');
