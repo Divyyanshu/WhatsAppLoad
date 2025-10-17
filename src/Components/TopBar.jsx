@@ -6,20 +6,14 @@ const TopBar = ({ title = 'Own Chats', onLogoutPress, isConnected }) => {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        {/* Title Section */}
         <Text style={styles.header}>{title}</Text>
-
-        {/* Icons Section */}
         <View style={styles.iconsRow}>
-          {/* Connection Status Dot */}
           <View
             style={[
               styles.statusDot,
               { backgroundColor: isConnected ? '#4CAF50' : '#F44336' },
             ]}
           />
-
-          {/* Logout Icon */}
           {onLogoutPress && (
             <TouchableOpacity style={styles.iconButton} onPress={onLogoutPress}>
               <Feather name="log-out" size={24} color="#D32F2F" />
